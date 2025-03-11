@@ -1,8 +1,16 @@
 # LLM-Ninja
 
-LLM-Ninja is a collection of scripts and tools designed for working with large language models (LLMs). This repository provides modular solutions for document processing, map-reduce pipelines, and LLM integration, making it easier to build and experiment with LLM-powered applications.
+## Table of Contents
+- [Overview](#overview)
+- [Scripts](#scripts)
+  - [map-reduce.py](#map-reducepy)
+- [Getting Started](#getting-started)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Overview
+
+LLM-Ninja is a collection of scripts and tools designed for working with large language models (LLMs). This repository provides modular solutions for document processing, map-reduce pipelines, and LLM integration, making it easier to build and experiment with LLM-powered applications.
 
 LLM-Ninja is structured to support multiple scripts. Each script is organized into its own section within this README, allowing you to understand the purpose, usage, and details for each script independently.
 
@@ -113,7 +121,6 @@ Citations:
 - `netsupport.sig` (Global chunk 2 of 4)
 - `main.zeek` (Global chunk 3 of 4)
 - `__load__.zeek` (Global chunk 4 of 4)
-```
 
 *Note: Installing and running Ollama, as well as downloading the default model (`phi4`), is required for the ChatOllama integration to work correctly.*
 
