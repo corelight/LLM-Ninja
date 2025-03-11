@@ -79,7 +79,7 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
    The final consolidated answer, including citations referencing the document sources, is printed to the console.
 
 #### Example:
-Below is an example command and output for `map-reduce.py` for [Zeek's Netsupport Detector]:
+Below is an example command and output for `map-reduce.py` for [Zeek's Netsupport Detector](https://github.com/corelight/zeek-netsupport-detector):
 
 ```bash
 % python map-reduce.py -d ~/Source/zeek-netsupport-detector -q "How does this Zeek package detect NetSupport?." --path "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)"
