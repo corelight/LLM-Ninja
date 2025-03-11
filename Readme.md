@@ -31,7 +31,7 @@ This script demonstrates a complete map-reduce pipeline to process documents and
 - **Python 3.7+**
 - **Apache Tika Server:**  
   Download and start the Tika server manually. The script is configured to use the endpoint: `http://localhost:9998`.  
-  More details: [Apache Tika Server](https://tika.apache.org/1.24.1/server.html).
+  More details: [Apache Tika Server](https://tika.apache.org/).
 - **Required Python Packages:**
   - `tika`
   - `beautifulsoup4`
