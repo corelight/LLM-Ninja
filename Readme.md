@@ -12,7 +12,7 @@
 
 LLM-Ninja is a collection of scripts and tools designed for working with large language models (LLMs). This repository provides modular solutions for document processing, map-reduce pipelines, and LLM integration, making it easier to build and experiment with LLM-powered applications.
 
-LLM-Ninja is structured to support multiple scripts. Each script is organized into its own section within this README, allowing you to understand the purpose, usage, and details for each script independently.
+LLM-Ninja is structured to support multiple scripts (more coming soon!). Each script is organized into its own section within this README, allowing you to understand the purpose, usage, and details for each script independently.
 
 ## Scripts
 
