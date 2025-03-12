@@ -133,7 +133,23 @@ Citations:
 
 This Python script ingests documents into [open-webui](https://github.com/open-webui/open-webui) for [knowledge based](https://docs.openwebui.com/features/workspace/knowledge/) LLM queries.
 
-Before using this script, **you must install open-webui**. Then, follow these configuration steps in open-webui:
+#### Prerequisites:
+- **Python 3.7+**
+- **Apache Tika Server:**  
+  Download and start the Tika server manually. The script is configured to use the endpoint: `http://localhost:9998`.  
+  More details: [Apache Tika Server](https://tika.apache.org/).
+- **Required Python Packages:**
+  - `Resquests`
+- **Ollama Installation and Model Download:**  
+  To use the ChatOllama integration, you must install and run [Ollama](https://ollama.com/), and pull the required model (the default used here is `phi4`).
+
+Install the dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Before using this script, **you must install [open-webui](https://github.com/open-webui/open-webui)**. Then, follow these configuration steps in open-webui:
 
 1. **Embedding Model:**  
    In the Admin Panel, navigate to **Settings -> Documents -> Embedding Model** and change it to `nomic-embed-text`.
