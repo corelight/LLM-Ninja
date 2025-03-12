@@ -166,7 +166,7 @@ Before using this script, **you must install open-webui**. Then, follow these co
 Below is an example command to ingest code and its output for [Zeek's NetSupport Detector](https://github.com/corelight/zeek-netsupport-detector):
 
 ```bash
-keith.jones@Mac LLM-Ninja % python open-webui-knowledge.py -k netsupport -d ~/Source/zeek-netsupport-detector -p "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)" -t eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMyN2YwNzdjLTkxYTEtNDMzYi1iYWU2LWQ4YjIzZjIyODNmNiJ9.wSAh5izRbhV580kWdNJP4YB0YyRTX15MWRaXoL6ErHw
+% python open-webui-knowledge.py -k netsupport -d ~/Source/zeek-netsupport-detector -p "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)" -t eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMyN2YwNzdjLTkxYTEtNDMzYi1iYWU2LWQ4YjIzZjIyODNmNiJ9.wSAh5izRbhV580kWdNJP4YB0YyRTX15MWRaXoL6ErHw
 ```
 
 Output:
