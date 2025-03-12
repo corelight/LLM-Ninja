@@ -21,7 +21,7 @@ LLM-Ninja is structured to support multiple scripts. Each script is organized in
 
 ### map-reduce.py
 
-This script demonstrates a complete map-reduce pipeline to process documents and query an LLM. It leverages Apache Tika for text extraction, LangChain for document splitting, ChatOllama for LLM integration, and LangGraph for managing workflow state.
+This script demonstrates a complete map-reduce pipeline to process documents and query an LLM. It leverages Apache Tika for text extraction, LangChain for document splitting, ChatOllama for LLM integration, and Ollama to serve the LLM model.
 
 #### Features:
 - **Document Ingestion:** Recursively traverses a directory to extract text from files using Apache Tika.
@@ -40,7 +40,6 @@ This script demonstrates a complete map-reduce pipeline to process documents and
   - `beautifulsoup4`
   - `langchain`
   - `langchain_ollama`
-  - `langgraph`
   - `argparse` (included in the standard library)
 - **Ollama Installation and Model Download:**  
   To use the ChatOllama integration, you must install and run [Ollama](https://ollama.com/), and pull the required model (the default used here is `phi4`).
