@@ -249,6 +249,8 @@ def main():
                             help="Temperature for the ChatOllama model (default: 0.0).")
     parser_arg.add_argument("-x", "--num_ctx", type=int, default=37500,
                             help="Context window size for ChatOllama (default: 37500).")
+    parser_arg.add_argument("-u", "--output", type=str,
+                            help="If provided, write the final response to the specified file.")
     parser_arg.add_argument("-z", "--debug", action="store_true",
                             help="Enable debug output")
     args = parser_arg.parse_args()
@@ -296,6 +298,14 @@ def main():
     
     print("Final Answer:")
     print(final_answer)
+
+    if args.output:
+        try:
+            with open(args.output, 'w') as outfile:
+                outfile.write(final_answer)
+            print(f"Final response written to {args.output}")
+        except Exception as e:
+            print(f"Error writing final response to {args.output}: {e}")
 
 if __name__ == "__main__":
     main()

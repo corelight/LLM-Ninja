@@ -67,6 +67,7 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-o, --chunk_overlap`: Overlap between chunks (default: `100`).
 - `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
 - `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
+- `-u, --output`: If provided, write the final response to the specified file.
 - `-z, --debug`: Enable debug output for detailed logs.
 
 #### How It Works:
