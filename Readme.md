@@ -6,6 +6,7 @@
 - [Overview](#overview)
 - [Scripts](#scripts)
   - [map-reduce.py](#map-reducepy)
+  - [open-webui-knowledge.py](#open-webui-knowledgepy)
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
@@ -14,7 +15,7 @@
 
 LLM-Ninja is a collection of scripts and tools designed for working with large language models (LLMs). This repository provides modular solutions for document processing, map-reduce pipelines, and LLM integration, making it easier to build and experiment with LLM-powered applications.
 
-LLM-Ninja is structured to support multiple scripts (more coming soon!). Each script is organized into its own section within this README, allowing you to understand the purpose, usage, and details for each script independently.
+LLM-Ninja is structured to support multiple scripts. Each script is organized into its own section within this README, allowing you to understand the purpose, usage, and details for each script independently.
 
 ## Scripts
 
@@ -127,7 +128,75 @@ Citations:
 
 *Note: Installing and running Ollama, as well as downloading the default model (`phi4`), is required for the ChatOllama integration to work correctly.*
 
-*Note: More scripts will be added in the future. Each script will have its own dedicated section in this README.*
+### open-webui-knowledge.py
+
+This Python script ingests documents into [open-webui](https://github.com/open-webui/open-webui) for [knowledge based](https://docs.openwebui.com/features/workspace/knowledge/) LLM queries.
+
+Before using this script, **you must install open-webui**. Then, follow these configuration steps in open-webui:
+
+1. **Embedding Model:**  
+   In the Admin Panel, navigate to **Settings -> Documents -> Embedding Model** and change it to `nomic-embed-text`.
+
+   ![open-webui Document Ingestion](images/open-webui-settings-documents.png)
+
+2. **Hybrid Search and Reranking:**  
+   Enable hybrid search and set the reranking model to `BAAI/bge-reranker-v2-m3`.
+
+3. **Content Extraction Engine:**  
+   Switch the content extraction engine to **Tika** in the same settings page for improved document extraction. Be sure you install and run Tika first. More details: [Apache Tika Server](https://tika.apache.org/)
+
+4. **Authentication Setup:**  
+   - Disable authentication for `open-webui` by running:
+     ```bash
+     WEBUI_AUTH=False open-webui serve
+     ```
+   - Obtain your auth token by clicking the user icon in the upper right corner, selecting **Account**, and copying the token at the bottom of the screen.
+     
+   ![open-webui Token](images/open-webui-token.png)
+
+#### Command-Line Arguments:
+- `-k, --knowledge`: **(Required)** Specify the knowledge name.
+- `-d, --directory`: **(Required)** Directory containing the documents to ingest.
+- `-p, --pattern`: Regular expression(s) to filter files. Separate multiple patterns with commas.
+- `-t, --token`: **(Required)** Auth token for open-webui.
+- `-u, --url`: (Optional) Base URL for open-webui (default is `http://localhost:8080`).
+- `--append`: (Optional) Toggle append mode. By default, append mode is OFF.
+
+#### Example:
+Below is an example command to ingest code and its output for [Zeek's NetSupport Detector](https://github.com/corelight/zeek-netsupport-detector):
+
+```bash
+keith.jones@Mac LLM-Ninja % python open-webui-knowledge.py -k netsupport -d ~/Source/zeek-netsupport-detector -p "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)" -t eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMyN2YwNzdjLTkxYTEtNDMzYi1iYWU2LWQ4YjIzZjIyODNmNiJ9.wSAh5izRbhV580kWdNJP4YB0YyRTX15MWRaXoL6ErHw
+```
+
+Output:
+```
+Using base URL: http://localhost:8080
+Using knowledge name: netsupport
+Using regex pattern(s): ['(?i).*readme\\.md', '.*/scripts/.*\\.(zeek|sig)']
+Using directory: /Users/keith.jones/Source/zeek-netsupport-detector
+Append mode is OFF
+Knowledge 'netsupport' already exists with ID '87b098a2-6577-4618-9534-d559863e0e7b'. Deleting it...
+Deleted knowledge with ID '87b098a2-6577-4618-9534-d559863e0e7b'.
+Created new knowledge 'netsupport' with ID 'b2b90141-28ac-4a82-be03-d0a8877768c1'.
+Processing file 1: /Users/keith.jones/Source/zeek-netsupport-detector/README.md
+Added file ID '7f8ab9ff-9c57-407b-9acb-4e4e729dcc3a' to knowledge 'b2b90141-28ac-4a82-be03-d0a8877768c1'.
+Processing file 2: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/netsupport.sig
+Added file ID '4b753bc0-a345-4f66-b394-c4c30816ee90' to knowledge 'b2b90141-28ac-4a82-be03-d0a8877768c1'.
+Processing file 3: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/main.zeek
+Added file ID '0b528600-3fb0-4c21-a70f-8307b9aad959' to knowledge 'b2b90141-28ac-4a82-be03-d0a8877768c1'.
+Processing file 4: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/__load__.zeek
+Added file ID 'a947f039-14bc-4d94-9908-41682b1e147b' to knowledge 'b2b90141-28ac-4a82-be03-d0a8877768c1'.
+```
+
+If you open Workspace and go to Knowledge, you will see your new knowledge base called `netsupport`:
+
+![open-webui Knowledge](images/open-webui-knowledge-netsupport-1.png)
+![open-webui NetSupport Knowledge](images/open-webui-knowledge-netsupport-2.png)
+
+You can then support `#netsupport` and select the new collection in an example query to an LLM:
+
+![open-webui NetSupport Knowledge Response](images/open-webui-knowledge-netsupport-3.png)
 
 ## Getting Started
 
@@ -149,6 +218,7 @@ Citations:
    ```bash
    pip install -r requirements.txt
    ```
+4. Now follow the instructions in the script you would like to run.
 
 ## Contributing
 
