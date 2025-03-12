@@ -1,5 +1,7 @@
 # LLM-Ninja
 
+<img src="images/logo.jpg" alt="Logo" width="300">
+
 ## Table of Contents
 - [Overview](#overview)
 - [Scripts](#scripts)
