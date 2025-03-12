@@ -218,7 +218,7 @@ You can then support `#netsupport` and select the new collection in an example q
    ```bash
    pip install -r requirements.txt
    ```
-4. Now follow the instructions in the script you would like to run.
+4. Now follow the instructions for the script above you would like to run.
 
 ## Contributing
 
