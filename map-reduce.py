@@ -5,9 +5,8 @@ from tika import parser
 from bs4 import BeautifulSoup
 import tika
 
-# Configure Tika to use your manually started Tika server.
+# Configure Tika to run in client-only mode.
 tika.TikaClientOnly = True
-tika.TikaServerEndpoint = "http://localhost:9998"
 
 # LangChain imports for Document and text splitting
 from langchain.docstore.document import Document
@@ -247,11 +246,16 @@ def main():
                             help="Context window size for ChatOllama (default: 37500).")
     parser_arg.add_argument("-u", "--output", type=str,
                             help="If provided, write the final response to the specified file.")
+    parser_arg.add_argument("-s", "--tika_server", type=str, default="http://localhost:9998",
+                            help="The Tika server endpoint URL (default: http://localhost:9998)")
     parser_arg.add_argument("-z", "--debug", action="store_true",
                             help="Enable debug output")
     args = parser_arg.parse_args()
 
     DEBUG = args.debug
+
+    # Set the Tika server endpoint from the command-line argument.
+    tika.TikaServerEndpoint = args.tika_server
 
     if args.query_file:
         query = args.query_file.read()

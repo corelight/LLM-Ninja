@@ -67,6 +67,7 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
 - `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
 - `-u, --output`: If provided, write the final response to the specified file.
+- `-s, --tika_server`: The Tika server endpoint URL (default: http://localhost:9998).
 - `-z, --debug`: Enable debug output for detailed logs.
 
 #### How It Works:
