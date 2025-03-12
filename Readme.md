@@ -194,7 +194,7 @@ If you open Workspace and go to Knowledge, you will see your new knowledge base 
 ![open-webui Knowledge](images/open-webui-knowledge-netsupport-1.png)
 ![open-webui NetSupport Knowledge](images/open-webui-knowledge-netsupport-2.png)
 
-You can then support `#netsupport` and select the new collection in an example query to an LLM:
+You can then type `#netsupport` in a chat prompt and click on the new collection for an example query to an LLM:
 
 ![open-webui NetSupport Knowledge Response](images/open-webui-knowledge-netsupport-3.png)
 
