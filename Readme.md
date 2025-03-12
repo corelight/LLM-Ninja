@@ -121,6 +121,7 @@ Citations:
 - `netsupport.sig` (Global chunk 2 of 4)
 - `main.zeek` (Global chunk 3 of 4)
 - `__load__.zeek` (Global chunk 4 of 4)
+```
 
 *Note: Installing and running Ollama, as well as downloading the default model (`phi4`), is required for the ChatOllama integration to work correctly.*
 
