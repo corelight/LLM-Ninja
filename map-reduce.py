@@ -182,7 +182,7 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
         return map_outputs[0]
     
     combined = "\n".join(map_outputs)
-    logging.info("Combined map outputs token count (approx.): %d", token_count(combined))
+    logging.info("Combined map outputs token count (approx.): {:,}".format(token_count(combined)))
     
     if token_count(combined) > context_size:
         logging.info("Combined output exceeds context limit. Splitting into intermediate chunks.")
