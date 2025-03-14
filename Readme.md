@@ -91,40 +91,48 @@ Below is an example command and output for `map-reduce.py` for [Zeek's NetSuppor
 
 Output:
 ```
-Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/README.md
-Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/netsupport.sig
-Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/main.zeek
-Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/__load__.zeek
-File README.md produced 1 chunks.
-File netsupport.sig produced 1 chunks.
-File main.zeek produced 1 chunks.
-File __load__.zeek produced 1 chunks.
-[Map] Sending chunk from README.md (chunk 1/4) to the model...
-[Map] Sending chunk from netsupport.sig (chunk 2/4) to the model...
-[Map] Sending chunk from main.zeek (chunk 3/4) to the model...
-[Map] Sending chunk from __load__.zeek (chunk 4/4) to the model...
-[Reduce] Starting reduction stage...
-[Reduce] Combining map outputs for reduction...
-[Reduce] Combined output within context limit. Sending final prompt to model...
+2025-03-14 15:54:51 - INFO - Starting processing with directory: /Users/keith.jones/Source/zeek-netsupport-detector
+2025-03-14 15:54:51 - INFO - Starting directory crawl: /Users/keith.jones/Source/zeek-netsupport-detector
+2025-03-14 15:54:51 - INFO - Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/README.md
+2025-03-14 15:54:51 - INFO - Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/netsupport.sig
+2025-03-14 15:54:51 - INFO - Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/main.zeek
+2025-03-14 15:54:51 - INFO - Ingesting file: /Users/keith.jones/Source/zeek-netsupport-detector/scripts/__load__.zeek
+2025-03-14 15:54:51 - INFO - Completed directory crawl. Total documents: 4
+2025-03-14 15:54:51 - INFO - Starting document splitting with chunk size: 100,000 and overlap: 100
+2025-03-14 15:54:51 - INFO - File README.md produced 1 chunk(s)
+2025-03-14 15:54:51 - INFO - File netsupport.sig produced 1 chunk(s)
+2025-03-14 15:54:51 - INFO - File main.zeek produced 1 chunk(s)
+2025-03-14 15:54:51 - INFO - File __load__.zeek produced 1 chunk(s)
+2025-03-14 15:54:51 - INFO - Document splitting complete. Total chunks: 4
+2025-03-14 15:54:51 - INFO - Starting map stage with complete and multi-chunk files.
+2025-03-14 15:54:51 - INFO - Starting map stage.
+2025-03-14 15:54:51 - INFO - Created a complete file group with 4 file(s) (combined length: 4,551)
+2025-03-14 15:54:51 - INFO - Processing complete file group 1/1 with 4 file(s)
+2025-03-14 15:55:12 - INFO - HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2025-03-14 15:55:43 - INFO - Map stage complete. Total outputs: 1
+2025-03-14 15:55:43 - INFO - Starting reduce stage with 1 map outputs.
+2025-03-14 15:55:43 - INFO - Single map output detected. No reduction query needed.
 Final Answer:
-The Zeek package detects NetSupport Command and Control (C2) traffic by analyzing network traffic captured in PCAP files for specific patterns associated with NetSupport malware activity. The detection process involves two primary mechanisms: HTTP headers analysis and command strings detection within TCP payloads.
+The Zeek package detects NetSupport by using a combination of signature-based detection and HTTP header analysis. Here's how it works:
 
-1. **HTTP Headers Detection**:
-   - The package identifies NetSupport C2 traffic by examining HTTP headers in the network packets. It looks for specific characteristics, such as "USER-AGENT" or "SERVER" headers containing the string "NetSupport". When these patterns are observed, a notice is triggered indicating NetSupport C2 activity via HTTP headers (`NetSupport::C2_Traffic_Observed_HTTP_Headers`). This detection mechanism is detailed in `main.zeek` (Global chunk 3 of 4).
+1. **Signature-Based Detection**:
+   - The package defines two signatures in `netsupport.sig` to detect specific patterns associated with NetSupport Command and Control (C2) traffic.
+     - **CMD=ENCD**: This signature looks for the pattern `CMD=ENCD` within TCP payloads (`ip-proto == tcp`). When this pattern is detected, it triggers a function `NetSupport::netsupport_cmd_encd_match`, which logs a notice indicating that NetSupport C2 activity has been observed. The payload containing the match is stored in the `sub` field of the notice.
+     - **CMD=POLL**: Similarly, this signature detects the pattern `CMD=POLL` within TCP payloads. It triggers the function `NetSupport::netsupport_cmd_poll_match`, which logs a similar notice with details about the detection and stores the payload in the `sub` field.
 
-2. **Command Strings Detection**:
-   - The package detects specific command strings within TCP payloads, such as `CMD=POLL` and `CMD=ENCD`, which are indicative of NetSupport's C2 communications.
-     - For the pattern `CMD=POLL`, a regular expression `/.*(\x0a|\x0d)CMD=POLL(\x0a|\x0d)/` is used to match occurrences bounded by newline characters. Detection triggers the function `NetSupport::netsupport_cmd_poll_match`.
-     - Similarly, for `CMD=ENCD`, the pattern is matched using the regular expression `/.*(\x0a|\x0d)CMD=ENCD(\x0a|\x0d)/`. Upon detection, the function `NetSupport::netsupport_cmd_encd_match` is executed.
-   - These signatures are part of a Zeek package designed to monitor and analyze network traffic for signs of NetSupport activity. The details about these signature match functions are provided in `netsupport.sig` (Global chunk 2 of 4).
+   These signatures are loaded into Zeek using the `@load-sigs ./netsupport.sig` directive in `__load__.zeek`.
 
-The detection process is automated through Zeek scripts that parse the PCAP file and apply these rules to identify potential NetSupport activity. Logs generated include detailed information such as timestamps, source and destination IP addresses, ports, and specific notes on what was detected.
+2. **HTTP Header Analysis**:
+   - The package also analyzes HTTP headers for indicators of NetSupport activity. In `main.zeek`, an event handler `http_header` is defined to inspect HTTP headers.
+     - It specifically looks for the presence of "NetSupport" in either the "USER-AGENT" or "SERVER" headers.
+     - If detected, it logs a notice indicating that NetSupport C2 activity has been observed via HTTP headers.
 
-Citations:
-- `README.md`
-- `netsupport.sig` (Global chunk 2 of 4)
-- `main.zeek` (Global chunk 3 of 4)
-- `__load__.zeek` (Global chunk 4 of 4)
+These mechanisms together allow Zeek to detect and log potential NetSupport C2 traffic by identifying specific patterns and header information associated with this malware. The notices generated provide details about the detection, including timestamps, connection information, and relevant payloads.
+
+**Citations**:
+- Signature definitions: `netsupport.sig`
+- Event handler for HTTP headers: `main.zeek`
+- Loading of signatures: `__load__.zeek`
 ```
 
 *Note: Installing and running Ollama, as well as downloading the default model (`phi4`), is required for the ChatOllama integration to work correctly.*

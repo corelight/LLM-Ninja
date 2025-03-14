@@ -1,6 +1,7 @@
 import os
 import re
 import argparse
+import logging
 from tika import parser
 from bs4 import BeautifulSoup
 import tika
@@ -18,24 +19,24 @@ from langchain_ollama import ChatOllama
 # Global debug flag (set later via command line).
 DEBUG = False
 
-def debug_print(*args, **kwargs):
-    if DEBUG:
-        print(*args, **kwargs)
+def setup_logging(debug: bool):
+    level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
-# --------------------------
-# Helper: Invoke ChatOllama and return its text content
-# --------------------------
 def safe_invoke(prompt: str) -> str:
+    logging.debug("Invoking ChatOllama with prompt of length %d", len(prompt))
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
     if content is None or content.strip() == "":
         raise ValueError("ChatOllama returned an empty response for prompt: " + prompt[:100])
     return content
 
-# --------------------------
-# Extraction Functions (using Tika)
-# --------------------------
 def extract_text(file_path: str) -> str:
+    logging.debug("Extracting text from %s", file_path)
     parsed = parser.from_file(file_path, xmlContent=True)
     content = parsed.get('content', '')
     if not content:
@@ -45,26 +46,28 @@ def extract_text(file_path: str) -> str:
 
 def crawl_directory_to_documents(directory: str, regex_patterns=None):
     documents = []
+    logging.info("Starting directory crawl: %s", directory)
     for root, _, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
-            # If regex patterns are provided, skip files that do not match any pattern.
             if regex_patterns and not any(regex.search(file_path) for regex in regex_patterns):
+                logging.debug("Skipping file (does not match regex): %s", file_path)
                 continue
-            # Status output to indicate ingestion of a file.
-            print(f"Ingesting file: {file_path}")
-            debug_print(f"Processing: {file_path}")
+            logging.info("Ingesting file: %s", file_path)
             try:
                 text = extract_text(file_path)
                 if text:
-                    debug_print(f"Extracted {len(text)} characters from {file}")
+                    logging.debug("Extracted %d characters from %s", len(text), file)
                     doc = Document(
                         page_content=text,
                         metadata={"file_name": file, "file_path": file_path}
                     )
                     documents.append(doc)
+                else:
+                    logging.warning("No text extracted from: %s", file_path)
             except Exception as e:
-                print(f"Error processing {file_path}: {e}")
+                logging.error("Error processing %s: %s", file_path, str(e))
+    logging.info("Completed directory crawl. Total documents: %d", len(documents))
     return documents
 
 def split_documents(documents, chunk_size, chunk_overlap):
@@ -75,12 +78,11 @@ def split_documents(documents, chunk_size, chunk_overlap):
     )
     split_docs = []
     global_index = 0
+    logging.info("Starting document splitting with chunk size: {:,} and overlap: {:,}".format(chunk_size, chunk_overlap))
     for doc in documents:
         chunks = splitter.split_text(doc.page_content)
         total_local = len(chunks)
-        # Status output: report how many chunks were produced for the current file.
-        print(f"File {doc.metadata['file_name']} produced {total_local} chunks.")
-        debug_print(f"Document {doc.metadata['file_name']} split into {total_local} chunks.")
+        logging.info("File %s produced %d chunk(s)", doc.metadata['file_name'], total_local)
         for i, chunk in enumerate(chunks, start=1):
             global_index += 1
             new_metadata = doc.metadata.copy()
@@ -91,33 +93,65 @@ def split_documents(documents, chunk_size, chunk_overlap):
     total_global = len(split_docs)
     for doc in split_docs:
         doc.metadata["global_total_chunks"] = total_global
-    debug_print(f"Total global chunks: {total_global}")
+    logging.info("Document splitting complete. Total chunks: %d", total_global)
     return split_docs
 
-# --------------------------
-# Utility: Print prompt debug info
-# --------------------------
 def print_prompt_debug(label, prompt):
-    prompt_length = len(prompt)
-    debug_print(f"{label} prompt length: {prompt_length}")
-    if prompt_length > 400:
-        debug_print(f"{label} prompt first 200 chars:\n{prompt[:200]}...\n")
-        debug_print(f"{label} prompt last 200 chars:\n{prompt[-200:]}\n")
+    logging.debug("%s prompt length: %d", label, len(prompt))
+    if len(prompt) > 400:
+        logging.debug("%s prompt first 200 chars: %s...", label, prompt[:200])
+        logging.debug("%s prompt last 200 chars: %s", label, prompt[-200:])
     else:
-        debug_print(f"{label} prompt:\n{prompt}\n")
+        logging.debug("%s prompt: %s", label, prompt)
 
-# --------------------------
-# Map Stage: Process each chunk individually.
-# --------------------------
-def map_stage(chunks, question: str):
+def map_stage(chunks, question: str, chunk_size_limit: int):
     map_outputs = []
-    for chunk in chunks:
+    logging.info("Starting map stage.")
+    complete_chunks = [chunk for chunk in chunks if chunk.metadata.get("total_local_chunks", 1) == 1]
+    multi_chunks = [chunk for chunk in chunks if chunk.metadata.get("total_local_chunks", 1) > 1]
+
+    # Group complete files into batches.
+    groups = []
+    current_group = []
+    current_length = 0
+    for chunk in complete_chunks:
+        length = len(chunk.page_content)
+        if current_group and (current_length + length > chunk_size_limit):
+            groups.append(current_group)
+            logging.info(f"Created a complete file group with {len(current_group):,} file(s) (combined length: {current_length:,})")
+            current_group = [chunk]
+            current_length = length
+        else:
+            current_group.append(chunk)
+            current_length += length
+    if current_group:
+        groups.append(current_group)
+        logging.info(f"Created a complete file group with {len(current_group):,} file(s) (combined length: {current_length:,})")
+
+    # Process each group of complete files.
+    for i, group in enumerate(groups, start=1):
+        prompt = (
+            "Below are complete documents, each enclosed in <document> tags along with its source file name. "
+            "Please use only the texts provided to answer the following question. Do not access external data.\n\n"
+        )
+        for doc in group:
+            file_name = doc.metadata.get("file_name", "unknown")
+            prompt += f"Document Source: {file_name}\n<document>\n{doc.page_content}\n</document>\n\n"
+        prompt += (
+            "Question between <question> ... </question> tags: \n"
+            f"<question>\n{question}\n</question>\n\n"
+            "Answer the question and include citations referencing the document sources (file names)."
+        )
+        logging.info("Processing complete file group %d/%d with %d file(s)", i, len(groups), len(group))
+        print_prompt_debug("Map (Grouped Complete Files)", prompt)
+        answer = safe_invoke(prompt)
+        map_outputs.append(answer)
+
+    # Process multi-chunk files individually.
+    for chunk in multi_chunks:
         file_name = chunk.metadata.get("file_name", "unknown")
         global_index = chunk.metadata.get("global_chunk_index", "?")
         total_global = chunk.metadata.get("global_total_chunks", "?")
-        # Status output: indicate that a chunk is being sent to the model.
-        print(f"[Map] Sending chunk from {file_name} (chunk {global_index}/{total_global}) to the model...")
-        debug_print(f"\n[Map] Processing {file_name}: Global chunk {global_index} of {total_global}")
         prompt = (
             "Below is the extracted text from a document chunk between the <chunk> ... </chunk> tags. "
             "Please use only the text below as context to answer the following question. "
@@ -125,111 +159,88 @@ def map_stage(chunks, question: str):
             f"Document Source: {file_name}\n"
             f"(Global chunk {global_index} of {total_global})\n\n"
             f"Document Content:\n<chunk>\n{chunk.page_content}\n</chunk>\n\n"
-            f"Question between <question> ... </question> tags: \n<question>\n{question}\n</question>\n\n"
+            "Question between <question> ... </question> tags: \n"
+            f"<question>\n{question}\n</question>\n\n"
             "Answer the question and include citations referencing the document source (i.e., file name)."
         )
-        debug_print("[Map] Prompt debug:")
-        print_prompt_debug("Map", prompt)
+        logging.info("Processing multi-chunk file: %s (chunk %d of %d)", file_name, global_index, total_global)
+        print_prompt_debug("Map (Multi-chunk)", prompt)
         answer = safe_invoke(prompt)
-        debug_print("[Map] Answer:")
-        debug_print(answer, "\n")
         map_outputs.append(answer)
+
+    logging.info("Map stage complete. Total outputs: %d", len(map_outputs))
     return map_outputs
 
-# --------------------------
-# Reduce Stage: Consolidate all map outputs with approximate token-aware chunking.
-# --------------------------
 def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
-    """
-    Recursively reduce map outputs until the combined text fits within the context size.
-    The prompt instructs the model to retain and list all source file names mentioned in the content.
-    If there is only one map output, skip directly to the final consolidation prompt.
-    """
-    # Approximate token count by splitting text into words.
     def token_count(text: str) -> int:
         return len(text.split())
-    
-    print("[Reduce] Starting reduction stage...")
 
+    logging.info("Starting reduce stage with %d map outputs.", len(map_outputs))
+    # If there's only one output, simply return it.
     if len(map_outputs) == 1:
-        print("[Reduce] Only one chunk detected. Sending final prompt to model...")
-        final_content = map_outputs[0]
-        prompt = (
-            "Below is the answer produced by processing a single document chunk between the <combined_content> ... </combined_content> tags. "
-            "Based solely on the text provided in this answer, please consolidate it into a final answer. "
-            "Do not access external data. "
-            "Be sure to keep and list all source file names mentioned in the content.\n\n"
-            f"<combined_content>\n{final_content}\n</combined_content>\n\n"
-            f"Final question between <question> ... </question> tags: \n<question>\n{question}\n</question>\n\n"
-            "Provide a consolidated final answer including citations referencing the document sources (file names)."
-        )
-        debug_print(f"[Reduce] Final prompt token count (approx.): {token_count(prompt)} tokens.")
-        return safe_invoke(prompt)
+        logging.info("Single map output detected. No reduction query needed.")
+        return map_outputs[0]
     
     combined = "\n".join(map_outputs)
-    print("[Reduce] Combining map outputs for reduction...")
-    debug_print(f"[Reduce] Combined answer token count (approx.): {token_count(combined)} tokens.")
+    logging.info("Combined map outputs token count (approx.): %d", token_count(combined))
     
     if token_count(combined) > context_size:
-        print("[Reduce] Combined output exceeds context size. Splitting into intermediate chunks...")
+        logging.info("Combined output exceeds context limit. Splitting into intermediate chunks.")
         chunks = []
         current_chunk = ""
         for output in map_outputs:
-            if token_count(current_chunk + "\n" + output) > context_size and current_chunk:
+            if current_chunk and token_count(current_chunk + "\n" + output) > context_size:
                 chunks.append(current_chunk)
                 current_chunk = output
             else:
                 current_chunk = current_chunk + "\n" + output if current_chunk else output
         if current_chunk:
             chunks.append(current_chunk)
-        
-        print(f"[Reduce] Created {len(chunks)} intermediate chunks for further reduction.")
-        debug_print(f"[Reduce] Reduced into {len(chunks)} intermediate chunks.")
+        logging.info("Created %d intermediate chunk(s) for further reduction.", len(chunks))
         
         intermediate_results = []
         for i, chunk in enumerate(chunks, start=1):
-            print(f"[Reduce] Reducing intermediate chunk {i} of {len(chunks)}...")
+            logging.info("Reducing intermediate chunk %d of %d.", i, len(chunks))
             prompt = (
                 "Below are some partial answers produced by processing document chunks between the <partial_content> ... </partial_content> tags. "
                 "Based solely on the text provided in these partial answers, please consolidate them into a single answer. "
                 "Do not access external data. "
                 "Be sure to keep and list all source file names mentioned in the content.\n\n"
                 f"<partial_content>\n{chunk}\n</partial_content>\n\n"
-                f"Intermediate question between <question> ... </question> tags: \n<question>\n{question}\n</question>\n\n"
+                "Intermediate question between <question> ... </question> tags: \n"
+                f"<question>\n{question}\n</question>\n\n"
                 "Provide a consolidated answer including citations referencing the document sources (file names)."
             )
-            debug_print(f"[Reduce] Processing intermediate chunk {i}/{len(chunks)} with token count (approx.): {token_count(chunk)}")
+            logging.debug("Intermediate prompt token count (approx.): %d", token_count(prompt))
             intermediate_result = safe_invoke(prompt)
             intermediate_results.append(intermediate_result)
         return reduce_stage(intermediate_results, question, model, context_size)
     else:
-        print("[Reduce] Combined output within context limit. Sending final prompt to model...")
+        logging.info("Combined output is within context limit. Finalizing reduction.")
         prompt = (
             "Below are the answers produced by processing document chunks between the <combined_content> ... </combined_content> tags. "
             "Based solely on the text provided in these answers, please consolidate them into a single final answer. "
             "Do not access external data. "
             "Be sure to keep and list all source file names mentioned in the content.\n\n"
             f"<combined_content>\n{combined}\n</combined_content>\n\n"
-            f"Final question between <question> ... </question> tags: \n<question>\n{question}\n</question>\n\n"
+            "Final question between <question> ... </question> tags: \n"
+            f"<question>\n{question}\n</question>\n\n"
             "Provide a consolidated final answer including citations referencing the document sources (file names)."
         )
-        debug_print(f"[Reduce] Final prompt token count (approx.): {token_count(prompt)} tokens.")
+        logging.debug("Final consolidation prompt token count (approx.): %d", token_count(prompt))
         final_answer = safe_invoke(prompt)
         return final_answer
 
-# --------------------------
-# Main Pipeline
-# --------------------------
 def main():
     global DEBUG, chat_model
 
     parser_arg = argparse.ArgumentParser(
-        description="Process complete documents as a knowledge base with Apache Tika and an LLM map-reduce pipeline."
+        description="Process documents as a knowledge base with Apache Tika and an LLM map-reduce pipeline."
     )
     parser_arg.add_argument("-d", "--directory", type=str, required=True,
                             help="Path to the directory containing files to process.")
     parser_arg.add_argument("-p", "--path", type=str, default=".*",
-                            help="Regular expression(s) to match file paths. Separate multiple regexes with commas. (default: .*)")
+                            help="Regex pattern(s) to match file paths. Separate multiple regexes with commas. (default: .*)")
     parser_arg.add_argument("-q", "--query", type=str,
                             help="A single query to ask the LLM (overrides --query_file if provided).")
     parser_arg.add_argument("-f", "--query_file", type=argparse.FileType('r'),
@@ -253,8 +264,9 @@ def main():
     args = parser_arg.parse_args()
 
     DEBUG = args.debug
+    setup_logging(DEBUG)
 
-    # Set the Tika server endpoint from the command-line argument.
+    logging.info("Starting processing with directory: %s", args.directory)
     tika.TikaServerEndpoint = args.tika_server
 
     if args.query_file:
@@ -265,36 +277,26 @@ def main():
     else:
         query = "Summarize the input context."
 
-    model = args.model
-    chunk_size = args.chunk_size
-    chunk_overlap = args.chunk_overlap
-    temperature = args.temperature
-    num_ctx = args.num_ctx
-
     chat_model = ChatOllama(
-        model=model,
-        temperature=temperature,
-        num_ctx=num_ctx,
+        model=args.model,
+        temperature=args.temperature,
+        num_ctx=args.num_ctx,
         num_predict=-2,
         seed=3,
         keep_alive=-1
     )
 
-    directory_path = args.directory
     regex_patterns = [re.compile(pattern.strip()) for pattern in args.path.split(',')]
-
-    documents = crawl_directory_to_documents(directory_path, regex_patterns)
-    debug_print(f"Total documents extracted: {len(documents)}")
-
-    split_docs = split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    debug_print(f"Total document chunks after splitting: {len(split_docs)}")
-
-    map_outputs = map_stage(split_docs, query)
+    documents = crawl_directory_to_documents(args.directory, regex_patterns)
+    split_docs = split_documents(documents, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
+    
+    logging.info("Starting map stage with complete and multi-chunk files.")
+    map_outputs = map_stage(split_docs, query, chunk_size_limit=args.chunk_size)
     if not map_outputs:
-        print("No outputs from the map stage. Exiting.")
+        logging.error("No outputs from the map stage. Exiting.")
         return
 
-    final_answer = reduce_stage(map_outputs, query, model=model, context_size=num_ctx)
+    final_answer = reduce_stage(map_outputs, query, model=args.model, context_size=args.num_ctx)
     
     print("Final Answer:")
     print(final_answer)
@@ -303,9 +305,9 @@ def main():
         try:
             with open(args.output, 'w') as outfile:
                 outfile.write(final_answer)
-            print(f"Final response written to {args.output}")
+            logging.info("Final response written to %s", args.output)
         except Exception as e:
-            print(f"Error writing final response to {args.output}: {e}")
+            logging.error("Error writing final response to %s: %s", args.output, str(e))
 
 if __name__ == "__main__":
     main()
