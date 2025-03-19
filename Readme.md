@@ -63,8 +63,8 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-q, --query`: A single query to ask the LLM. Overrides `--query_file` if both are provided.
 - `-f, --query_file`: Path to a file containing a multi-line query.
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
-- `-c, --chunk_size`: Chunk size for splitting documents (default: `100000`).
-- `-o, --chunk_overlap`: Overlap between chunks (default: `100`).
+- `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
+- `-o, --chunk_overlap`: Overlap between chunks (default: `0`).
 - `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
 - `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
 - `-u, --output`: If provided, write the final response to the specified file.
@@ -149,8 +149,8 @@ This script enables batch processing of multiple first-level subdirectories. It 
 - `-q, --query`: A single query to ask the LLM (overrides `--query_file` if provided).
 - `-f, --query_file`: Path to a file containing a multi-line query.
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
-- `-c, --chunk_size`: Chunk size for splitting documents (default: `100000`).
-- `-o, --chunk_overlap`: Overlap between chunks (default: `100`).
+- `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
+- `-o, --chunk_overlap`: Overlap between chunks (default: `0`).
 - `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
 - `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
 - `-s, --tika_server`: The Tika server endpoint URL (default: `http://localhost:9998`).

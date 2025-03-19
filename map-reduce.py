@@ -265,10 +265,10 @@ def main():
                             help="Path to a file containing the multi-line query.")
     parser_arg.add_argument("-m", "--model", type=str, default="phi4",
                             help="The Ollama model used for the queries (default: phi4).")
-    parser_arg.add_argument("-c", "--chunk_size", type=int, default=100000,
-                            help="Chunk size for splitting the documents (default: 100000).")
-    parser_arg.add_argument("-o", "--chunk_overlap", type=int, default=100,
-                            help="Chunk overlap for splitting the documents (default: 100).")
+    parser_arg.add_argument("-c", "--chunk_size", type=int, default=75000,
+                            help="Chunk size for splitting the documents (default: 75000).")
+    parser_arg.add_argument("-o", "--chunk_overlap", type=int, default=0,
+                            help="Chunk overlap for splitting the documents (default: 0).")
     parser_arg.add_argument("-t", "--temperature", type=float, default=0.0,
                             help="Temperature for the ChatOllama model (default: 0.0).")
     parser_arg.add_argument("-x", "--num_ctx", type=int, default=37500,
