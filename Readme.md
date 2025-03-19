@@ -6,6 +6,7 @@
 - [Overview](#overview)
 - [Scripts](#scripts)
   - [map-reduce.py](#map-reducepy)
+  - [map-reduce-subdirs.py](#map-reduce-subdirspy)
   - [open-webui-knowledge.py](#open-webui-knowledgepy)
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
@@ -67,7 +68,7 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
 - `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
 - `-u, --output`: If provided, write the final response to the specified file.
-- `-s, --tika_server`: The Tika server endpoint URL (default: http://localhost:9998).
+- `-s, --tika_server`: The Tika server endpoint URL (default: `http://localhost:9998`).
 - `-z, --debug`: Enable debug output for detailed logs.
 
 #### How It Works:
@@ -115,27 +116,52 @@ Output:
 Final Answer:
 The Zeek package detects NetSupport by using a combination of signature-based detection and HTTP header analysis. Here's how it works:
 
-1. **Signature-Based Detection**:
-   - The package defines two signatures in `netsupport.sig` to detect specific patterns associated with NetSupport Command and Control (C2) traffic.
-     - **CMD=ENCD**: This signature looks for the pattern `CMD=ENCD` within TCP payloads (`ip-proto == tcp`). When this pattern is detected, it triggers a function `NetSupport::netsupport_cmd_encd_match`, which logs a notice indicating that NetSupport C2 activity has been observed. The payload containing the match is stored in the `sub` field of the notice.
-     - **CMD=POLL**: Similarly, this signature detects the pattern `CMD=POLL` within TCP payloads. It triggers the function `NetSupport::netsupport_cmd_poll_match`, which logs a similar notice with details about the detection and stores the payload in the `sub` field.
-
-   These signatures are loaded into Zeek using the `@load-sigs ./netsupport.sig` directive in `__load__.zeek`.
-
-2. **HTTP Header Analysis**:
-   - The package also analyzes HTTP headers for indicators of NetSupport activity. In `main.zeek`, an event handler `http_header` is defined to inspect HTTP headers.
-     - It specifically looks for the presence of "NetSupport" in either the "USER-AGENT" or "SERVER" headers.
-     - If detected, it logs a notice indicating that NetSupport C2 activity has been observed via HTTP headers.
-
-These mechanisms together allow Zeek to detect and log potential NetSupport C2 traffic by identifying specific patterns and header information associated with this malware. The notices generated provide details about the detection, including timestamps, connection information, and relevant payloads.
-
-**Citations**:
-- Signature definitions: `netsupport.sig`
-- Event handler for HTTP headers: `main.zeek`
-- Loading of signatures: `__load__.zeek`
+ 1. **Signature-Based Detection**:
+    - The package defines two signatures in `netsupport.sig` to detect specific patterns associated with NetSupport Command and Control (C2) traffic.
+      - **CMD=ENCD**: This signature looks for the pattern `CMD=ENCD` within TCP payloads (`ip-proto == tcp`). When this pattern is detected, it triggers a function `NetSupport::netsupport_cmd_encd_match`, which logs a notice indicating that NetSupport C2 activity has been observed. The payload containing the match is stored in the `sub` field of the notice.
+      - **CMD=POLL**: Similarly, this signature detects the pattern `CMD=POLL` within TCP payloads. It triggers the function `NetSupport::netsupport_cmd_poll_match`, which logs a similar notice with details about the detection and stores the payload in the `sub` field.
+ 
+    These signatures are loaded into Zeek using the `@load-sigs ./netsupport.sig` directive in `__load__.zeek`.
+ 
+ 2. **HTTP Header Analysis**:
+    - The package also analyzes HTTP headers for indicators of NetSupport activity. In `main.zeek`, an event handler `http_header` is defined to inspect HTTP headers.
+      - It specifically looks for the presence of "NetSupport" in either the "USER-AGENT" or "SERVER" headers.
+      - If detected, it logs a notice indicating that NetSupport C2 activity has been observed via HTTP headers.
+ 
+ These mechanisms together allow Zeek to detect and log potential NetSupport C2 traffic by identifying specific patterns and header information associated with this malware. The notices generated provide details about the detection, including timestamps, connection information, and relevant payloads.
+ 
+ **Citations**:
+ - Signature definitions: `netsupport.sig`
+ - Event handler for HTTP headers: `main.zeek`
+ - Loading of signatures: `__load__.zeek`
 ```
 
 *Note: Installing and running Ollama, as well as downloading the default model (`phi4`), is required for the ChatOllama integration to work correctly.*
+
+### map-reduce-subdirs.py
+
+This script enables batch processing of multiple first-level subdirectories. It automatically locates `map-reduce.py` in the same directory as itself and saves the output files in the current working directory. If an output file for a subdirectory already exists, that subdirectory is skipped. The subdirectories are processed in case-insensitive order.
+
+#### Command-Line Options:
+- **parent_directory** (positional): Parent directory containing subdirectories to process.
+- `--script`: Path to the processing script (default: `map-reduce.py` in the same directory as this script).
+- `-p, --path`: Regular expression(s) to match file paths (default: `.*`).
+- `-q, --query`: A single query to ask the LLM (overrides `--query_file` if provided).
+- `-f, --query_file`: Path to a file containing a multi-line query.
+- `-m, --model`: Specify the Ollama model (default: `phi4`).
+- `-c, --chunk_size`: Chunk size for splitting documents (default: `100000`).
+- `-o, --chunk_overlap`: Overlap between chunks (default: `100`).
+- `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
+- `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
+- `-s, --tika_server`: The Tika server endpoint URL (default: `http://localhost:9998`).
+- `-z, --debug`: Enable debug output for detailed logs.
+
+#### Usage Example:
+```bash
+python map-reduce-subdirs.py /path/to/parent_directory -q "Summarize the documents" -p ".*\.pdf"
+```
+
+This command processes each first-level subdirectory within `/path/to/parent_directory` using `map-reduce.py` for document processing and saves the output for each subdirectory in the current working directory as `<subdirectory_name>.txt`.
 
 ### open-webui-knowledge.py
 
@@ -184,14 +210,14 @@ Before using this script, **you must install [open-webui](https://github.com/ope
 - `-d, --directory`: **(Required)** Directory containing the documents to ingest.
 - `-p, --pattern`: Regular expression(s) to filter files. Separate multiple patterns with commas.
 - `-t, --token`: **(Required)** Auth token for open-webui.
-- `-u, --url`: (Optional) Base URL for open-webui (default is `http://localhost:8080`).
+- `-u, --url`: (Optional) Base URL for open-webui (default: `http://localhost:8080`).
 - `--append`: (Optional) Toggle append mode. By default, append mode is OFF.
 
 #### Example:
 Below is an example command to ingest code and its output for [Zeek's NetSupport Detector](https://github.com/corelight/zeek-netsupport-detector):
 
 ```bash
-% python open-webui-knowledge.py -k netsupport -d ~/Source/zeek-netsupport-detector -p "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)" -t eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMyN2YwNzdjLTkxYTEtNDMzYi1iYWU2LWQ4YjIzZjIyODNmNiJ9.wSAh5izRbhV580kWdNJP4YB0YyRTX15MWRaXoL6ErHw
+% python open-webui-knowledge.py -k netsupport -d ~/Source/zeek-netsupport-detector -p "(?i).*readme\.md,.*/scripts/.*\.(zeek|sig)" -t your_auth_token_here
 ```
 
 Output:
