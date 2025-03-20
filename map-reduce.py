@@ -19,6 +19,10 @@ from langchain_ollama import ChatOllama
 # Global debug flag (set later via command line).
 DEBUG = False
 
+# Global counters for LLM queries
+llm_queries_completed = 0
+llm_total_queries = 0
+
 def setup_logging(debug: bool):
     level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
@@ -28,11 +32,14 @@ def setup_logging(debug: bool):
     )
 
 def safe_invoke(prompt: str) -> str:
+    global llm_queries_completed, llm_total_queries
     logging.debug(f"Invoking ChatOllama with prompt of length {len(prompt):,}")
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
     if content is None or content.strip() == "":
         raise ValueError("ChatOllama returned an empty response for prompt: " + prompt[:100])
+    llm_queries_completed += 1
+    logging.info(f"LLM queries completed: {llm_queries_completed}/{llm_total_queries}")
     return content
 
 def extract_text(file_path: str) -> str:
@@ -105,6 +112,7 @@ def print_prompt_debug(label, prompt):
         logging.debug(f"{label} prompt: {prompt}")
 
 def map_stage(chunks, question: str, chunk_size_limit: int):
+    global llm_total_queries
     map_outputs = []
     logging.info("Starting map stage.")
     complete_chunks = [chunk for chunk in chunks if chunk.metadata.get("total_local_chunks", 1) == 1]
@@ -127,6 +135,21 @@ def map_stage(chunks, question: str, chunk_size_limit: int):
     if current_group:
         groups.append(current_group)
         logging.info(f"Created a complete file group with {len(current_group):,} file(s) (combined length: {current_length:,})")
+    num_complete_groups = len(groups)
+
+    # Group multi-chunk files by file name.
+    multi_files = {}
+    for chunk in multi_chunks:
+        file_name = chunk.metadata.get("file_name", "unknown")
+        multi_files.setdefault(file_name, []).append(chunk)
+    total_multi_chunks = sum(len(chunks_list) for chunks_list in multi_files.values())
+
+    # Estimate total queries for the map stage.
+    expected_map_queries = num_complete_groups + total_multi_chunks
+    # Add 1 for the reduce stage if there will be more than one map output.
+    expected_reduce_queries = 1 if expected_map_queries > 1 else 0
+    llm_total_queries = expected_map_queries + expected_reduce_queries
+    logging.info(f"Estimated total LLM queries (initial): {llm_total_queries}")
 
     # Process each group of complete files.
     for i, group in enumerate(groups, start=1):
@@ -147,14 +170,8 @@ def map_stage(chunks, question: str, chunk_size_limit: int):
         answer = safe_invoke(prompt)
         map_outputs.append(answer)
 
-    # Group multi-chunk files by file name.
-    multi_files = {}
-    for chunk in multi_chunks:
-        file_name = chunk.metadata.get("file_name", "unknown")
-        multi_files.setdefault(file_name, []).append(chunk)
+    # Process each multi-chunk file.
     total_multi_files = len(multi_files)
-    # Compute total multi-chunk count.
-    total_multi_chunks = sum(len(chunks_list) for chunks_list in multi_files.values())
     multi_chunk_counter = 0
     logging.info(f"Found {total_multi_files:,} multi-chunk file(s) with a total of {total_multi_chunks:,} multi-chunk(s).")
     
@@ -190,6 +207,7 @@ def map_stage(chunks, question: str, chunk_size_limit: int):
     return map_outputs
 
 def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
+    global llm_total_queries
     def token_count(text: str) -> int:
         return len(text.split())
 
@@ -202,6 +220,7 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
     combined = "\n".join(map_outputs)
     logging.info(f"Combined map outputs token count (approx.): {token_count(combined):,}")
     
+    # If the combined output exceeds the context size, split into intermediate chunks.
     if token_count(combined) > context_size:
         logging.info("Combined output exceeds context limit. Splitting into intermediate chunks.")
         chunks = []
@@ -215,6 +234,11 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
         if current_chunk:
             chunks.append(current_chunk)
         logging.info(f"Created {len(chunks):,} intermediate chunk(s) for further reduction.")
+        # If more than one reduce query is needed at this level, update the total dynamically.
+        if len(chunks) > 1:
+            additional_expected = len(chunks) - 1
+            llm_total_queries += additional_expected
+            logging.info(f"Additional estimated LLM queries from reduce splitting: {additional_expected} (New total: {llm_total_queries})")
         
         intermediate_results = []
         for i, chunk in enumerate(chunks, start=1):
@@ -265,8 +289,8 @@ def main():
                             help="Path to a file containing the multi-line query.")
     parser_arg.add_argument("-m", "--model", type=str, default="phi4",
                             help="The Ollama model used for the queries (default: phi4).")
-    parser_arg.add_argument("-c", "--chunk_size", type=int, default=75000,
-                            help="Chunk size for splitting the documents (default: 75000).")
+    parser_arg.add_argument("-c", "--chunk_size", type=int, default=65000,
+                            help="Chunk size for splitting the documents (default: 65000).")
     parser_arg.add_argument("-o", "--chunk_overlap", type=int, default=0,
                             help="Chunk overlap for splitting the documents (default: 0).")
     parser_arg.add_argument("-t", "--temperature", type=float, default=0.0,

@@ -24,8 +24,8 @@ def main():
                         help="Path to a file containing the multi-line query.")
     parser.add_argument("-m", "--model", type=str, default="phi4",
                         help="The Ollama model used for the queries (default: phi4).")
-    parser.add_argument("-c", "--chunk_size", type=int, default=75000,
-                        help="Chunk size for splitting the documents (default: 75000).")
+    parser.add_argument("-c", "--chunk_size", type=int, default=65000,
+                        help="Chunk size for splitting the documents (default: 65000).")
     parser.add_argument("-o", "--chunk_overlap", type=int, default=0,
                         help="Chunk overlap for splitting the documents (default: 0).")
     parser.add_argument("-t", "--temperature", type=float, default=0.0,
