@@ -1,6 +1,7 @@
 import os
 import subprocess
 import argparse
+import sys
 
 def main():
     parser = argparse.ArgumentParser(
@@ -36,11 +37,14 @@ def main():
                         help="The Tika server endpoint URL (default: http://localhost:9998).")
     parser.add_argument("-z", "--debug", action="store_true",
                         help="Enable debug output.")
+    # New option: capture logs from all subdirectory processes in a single log file.
+    parser.add_argument("-l", "--log", action="store_true",
+                        help="If provided, capture all output (including stderr) and save logs to map-reduce-subdirs.log in the current directory")
     
     args = parser.parse_args()
     parent_dir = args.parent_directory
 
-    # Prepare the additional options (everything except -d and -u).
+    # Prepare the additional options (everything except -d, -u, and -l).
     additional_options = []
     if args.path is not None:
         additional_options.extend(["-p", args.path])
@@ -57,6 +61,12 @@ def main():
     if args.debug:
         additional_options.append("-z")
     
+    # Log file for concatenated logs.
+    concatenated_log_file = os.path.join(os.getcwd(), "map-reduce-subdirs.log")
+    # If the log file exists and -l is provided, delete it before starting.
+    if args.log and os.path.exists(concatenated_log_file):
+        os.remove(concatenated_log_file)
+
     # Gather and sort first-level subdirectories (case-insensitive).
     subdirs = [item for item in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, item))]
     for item in sorted(subdirs, key=lambda s: s.lower()):
@@ -69,14 +79,35 @@ def main():
 
         print(f"Processing directory: {subdir_path}")
 
-        # Build and execute the command.
+        # Build the command. Note: We do NOT pass the -l option to map-reduce.py.
         cmd = ["python", args.script,
                "-d", subdir_path,
                "-u", output_file]
         cmd.extend(additional_options)
         
-        subprocess.run(cmd, check=True)
-        print(f"Output saved to: {output_file}")
+        if args.log:
+            # Append header for this subdirectory to the log file.
+            with open(concatenated_log_file, "a") as logf:
+                logf.write(f"===== Log for subdirectory: {subdir_path} =====\n")
+            
+            # Run the command, capturing all output (stdout and stderr).
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            # Open the log file once for the duration of this process, so we can write each line as it's produced.
+            with open(concatenated_log_file, "a") as logf:
+                for line in process.stdout:
+                    sys.stdout.write(line)   # Print each line as it comes.
+                    sys.stdout.flush()
+                    logf.write(line)         # Write the same line to the log file.
+                    logf.flush()
+            process.wait()
+            # Append a separator after the output.
+            with open(concatenated_log_file, "a") as logf:
+                logf.write("\n========================================\n\n")
+            print(f"Output saved to: {output_file}")
+            print(f"Logs appended to: {concatenated_log_file}")
+        else:
+            subprocess.run(cmd, check=True)
+            print(f"Output saved to: {output_file}")
 
 if __name__ == "__main__":
     main()

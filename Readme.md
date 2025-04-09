@@ -62,6 +62,7 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-p, --path`: Regular expression(s) to match file paths. Separate multiple regexes with commas (default: `.*`).
 - `-q, --query`: A single query to ask the LLM. Overrides `--query_file` if both are provided.
 - `-f, --query_file`: Path to a file containing a multi-line query.
+- `-l, --log`: Saves the log to map-reduce.log.
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
 - `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
 - `-o, --chunk_overlap`: Overlap between chunks (default: `0`).
@@ -148,6 +149,7 @@ This script enables batch processing of multiple first-level subdirectories. It 
 - `-p, --path`: Regular expression(s) to match file paths (default: `.*`).
 - `-q, --query`: A single query to ask the LLM (overrides `--query_file` if provided).
 - `-f, --query_file`: Path to a file containing a multi-line query.
+- `-l, --log`: If provided, capture all output and save logs to map-reduce-subdirs.log in the current directory.
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
 - `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
 - `-o, --chunk_overlap`: Overlap between chunks (default: `0`).

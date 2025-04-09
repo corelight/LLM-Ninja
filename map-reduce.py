@@ -23,21 +23,34 @@ DEBUG = False
 llm_queries_completed = 0
 llm_total_queries = 0
 
-def setup_logging(debug: bool):
+def setup_logging(debug: bool, log_to_file: bool = False):
     level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
+    if log_to_file:
+        # Add a file handler that writes logs to map-reduce.log
+        file_handler = logging.FileHandler("map-reduce.log")
+        file_handler.setLevel(level)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        file_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(file_handler)
 
 def safe_invoke(prompt: str) -> str:
     global llm_queries_completed, llm_total_queries
     logging.debug(f"Invoking ChatOllama with prompt of length {len(prompt):,}")
+    # Log the full prompt if debugging is enabled.
+    if DEBUG:
+        logging.debug("Full Prompt: " + prompt)
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
     if content is None or content.strip() == "":
-        raise ValueError("ChatOllama returned an empty response for prompt: " + prompt[:100])
+        raise ValueError("ChatOllama returned an empty response for prompt: " + prompt)
+    # Log the full LLM response if debugging is enabled.
+    if DEBUG:
+        logging.debug("LLM Full Response: " + content)
     llm_queries_completed += 1
     logging.info(f"LLM queries completed: {llm_queries_completed}/{llm_total_queries}")
     return content
@@ -104,12 +117,8 @@ def split_documents(documents, chunk_size, chunk_overlap):
     return split_docs
 
 def print_prompt_debug(label, prompt):
-    logging.debug(f"{label} prompt length: {len(prompt):,}")
-    if len(prompt) > 400:
-        logging.debug(f"{label} prompt first 200 chars: {prompt[:200]}...")
-        logging.debug(f"{label} prompt last 200 chars: {prompt[-200:]}")
-    else:
-        logging.debug(f"{label} prompt: {prompt}")
+    # Always print the full prompt without any truncation.
+    logging.debug(f"{label} prompt (full): {prompt}")
 
 def map_stage(chunks, question: str, chunk_size_limit: int):
     global llm_total_queries
@@ -303,10 +312,12 @@ def main():
                             help="The Tika server endpoint URL (default: http://localhost:9998)")
     parser_arg.add_argument("-z", "--debug", action="store_true",
                             help="Enable debug output")
+    parser_arg.add_argument("-l", "--log", action="store_true",
+                            help="If provided, save log to map-reduce.log in the current directory.")
     args = parser_arg.parse_args()
 
     DEBUG = args.debug
-    setup_logging(DEBUG)
+    setup_logging(DEBUG, log_to_file=args.log)
 
     logging.info(f"Starting processing with directory: {args.directory}")
     tika.TikaServerEndpoint = args.tika_server
