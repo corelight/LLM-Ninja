@@ -46,11 +46,11 @@ def safe_invoke(prompt: str) -> str:
     # Log the full prompt if debugging is enabled.
     if DEBUG:
         logging.debug("Full Prompt: " + prompt)
-    # Print the full LLM query if -e is set.
+    # If -e is set, print and log the full LLM query.
     if SHOW_FULL_QUERY:
-        print("LLM Query:")
-        print(prompt)
-        print("-" * 80)
+        query_output = "LLM Query:\n" + prompt + "\n" + ("-" * 80)
+        print(query_output)
+        logging.info(query_output)
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
     if content is None or content.strip() == "":
@@ -58,11 +58,11 @@ def safe_invoke(prompt: str) -> str:
     # Log the full LLM response if debugging is enabled.
     if DEBUG:
         logging.debug("LLM Full Response: " + content)
-    # Print the LLM response immediately if the flag is enabled.
+    # If -n is set, print and log the full LLM response.
     if PRINT_ALL_RESPONSES:
-        print("LLM Response:")
-        print(content)
-        print("-" * 80)  # Separator for readability
+        response_output = "LLM Response:\n" + content + "\n" + ("-" * 80)
+        print(response_output)
+        logging.info(response_output)
     llm_queries_completed += 1
     logging.info(f"LLM queries completed: {llm_queries_completed}/{llm_total_queries}")
     return content
@@ -129,7 +129,7 @@ def split_documents(documents, chunk_size, chunk_overlap):
     return split_docs
 
 def print_prompt_debug(label, prompt):
-    # Always print the full prompt without any truncation.
+    # Always log the full prompt without any truncation.
     logging.debug(f"{label} prompt (full): {prompt}")
 
 def map_stage(chunks, question: str, chunk_size_limit: int):
@@ -328,7 +328,7 @@ def main():
     parser_arg.add_argument("-l", "--log", action="store_true",
                             help="If provided, save log to map-reduce.log in the current directory.")
     parser_arg.add_argument("-n", "--print_responses", action="store_true",
-                            help="Output all LLM response as they happen.")
+                            help="Output all LLM responses as they happen.")
     parser_arg.add_argument("-e", "--print_queries", action="store_true",
                             help="Show the full LLM queries (prompt text) in the output as they happen.")
     args = parser_arg.parse_args()
