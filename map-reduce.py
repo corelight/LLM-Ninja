@@ -16,8 +16,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # Import ChatOllama from langchain_ollama package
 from langchain_ollama import ChatOllama
 
-# Global debug flag (set later via command line).
+# Global debug flag and flags for printing responses and queries (set later via command line).
 DEBUG = False
+PRINT_ALL_RESPONSES = False
+SHOW_FULL_QUERY = False
 
 # Global counters for LLM queries
 llm_queries_completed = 0
@@ -39,11 +41,16 @@ def setup_logging(debug: bool, log_to_file: bool = False):
         logging.getLogger().addHandler(file_handler)
 
 def safe_invoke(prompt: str) -> str:
-    global llm_queries_completed, llm_total_queries
+    global llm_queries_completed, llm_total_queries, PRINT_ALL_RESPONSES, SHOW_FULL_QUERY
     logging.debug(f"Invoking ChatOllama with prompt of length {len(prompt):,}")
     # Log the full prompt if debugging is enabled.
     if DEBUG:
         logging.debug("Full Prompt: " + prompt)
+    # Print the full LLM query if -e is set.
+    if SHOW_FULL_QUERY:
+        print("LLM Query:")
+        print(prompt)
+        print("-" * 80)
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
     if content is None or content.strip() == "":
@@ -51,6 +58,11 @@ def safe_invoke(prompt: str) -> str:
     # Log the full LLM response if debugging is enabled.
     if DEBUG:
         logging.debug("LLM Full Response: " + content)
+    # Print the LLM response immediately if the flag is enabled.
+    if PRINT_ALL_RESPONSES:
+        print("LLM Response:")
+        print(content)
+        print("-" * 80)  # Separator for readability
     llm_queries_completed += 1
     logging.info(f"LLM queries completed: {llm_queries_completed}/{llm_total_queries}")
     return content
@@ -265,6 +277,7 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
             logging.debug(f"Intermediate prompt token count (approx.): {token_count(prompt):,}")
             intermediate_result = safe_invoke(prompt)
             intermediate_results.append(intermediate_result)
+        # Recursively reduce the intermediate results.
         return reduce_stage(intermediate_results, question, model, context_size)
     else:
         logging.info("Combined output is within context limit. Finalizing reduction.")
@@ -283,7 +296,7 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
         return final_answer
 
 def main():
-    global DEBUG, chat_model
+    global DEBUG, chat_model, PRINT_ALL_RESPONSES, SHOW_FULL_QUERY
 
     parser_arg = argparse.ArgumentParser(
         description="Process documents as a knowledge base with Apache Tika and an LLM map-reduce pipeline."
@@ -314,9 +327,15 @@ def main():
                             help="Enable debug output")
     parser_arg.add_argument("-l", "--log", action="store_true",
                             help="If provided, save log to map-reduce.log in the current directory.")
+    parser_arg.add_argument("-n", "--print_responses", action="store_true",
+                            help="Output all LLM response as they happen.")
+    parser_arg.add_argument("-e", "--print_queries", action="store_true",
+                            help="Show the full LLM queries (prompt text) in the output as they happen.")
     args = parser_arg.parse_args()
 
     DEBUG = args.debug
+    PRINT_ALL_RESPONSES = args.print_responses
+    SHOW_FULL_QUERY = args.print_queries
     setup_logging(DEBUG, log_to_file=args.log)
 
     logging.info(f"Starting processing with directory: {args.directory}")

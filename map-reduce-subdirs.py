@@ -33,14 +33,17 @@ def main():
                         help="Temperature for the ChatOllama model (default: 0.0).")
     parser.add_argument("-x", "--num_ctx", type=int, default=37500,
                         help="Context window size for ChatOllama (default: 37500).")
+    parser.add_argument("-n", "--print_responses", action="store_true",
+                        help="Output all LLM response as they happen.")
+    parser.add_argument("-e", "--print_queries", action="store_true",
+                        help="Show the full LLM queries (prompt text) in the output as they happen.")
+    parser.add_argument("-l", "--log", action="store_true",
+                        help="If provided, capture all output (including stderr) and save logs to map-reduce-subdirs.log in the current directory")
     parser.add_argument("-s", "--tika_server", type=str, default="http://localhost:9998",
                         help="The Tika server endpoint URL (default: http://localhost:9998).")
     parser.add_argument("-z", "--debug", action="store_true",
                         help="Enable debug output.")
-    # New option: capture logs from all subdirectory processes in a single log file.
-    parser.add_argument("-l", "--log", action="store_true",
-                        help="If provided, capture all output (including stderr) and save logs to map-reduce-subdirs.log in the current directory")
-    
+
     args = parser.parse_args()
     parent_dir = args.parent_directory
 
@@ -60,6 +63,10 @@ def main():
     additional_options.extend(["-s", args.tika_server])
     if args.debug:
         additional_options.append("-z")
+    if args.print_responses:
+        additional_options.append("-n")
+    if args.print_queries:
+        additional_options.append("-e")
     
     # Log file for concatenated logs.
     concatenated_log_file = os.path.join(os.getcwd(), "map-reduce-subdirs.log")
@@ -80,9 +87,7 @@ def main():
         print(f"Processing directory: {subdir_path}")
 
         # Build the command. Note: We do NOT pass the -l option to map-reduce.py.
-        cmd = ["python", args.script,
-               "-d", subdir_path,
-               "-u", output_file]
+        cmd = ["python", args.script, "-d", subdir_path, "-u", output_file]
         cmd.extend(additional_options)
         
         if args.log:
