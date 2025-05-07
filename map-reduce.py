@@ -237,16 +237,20 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
     if len(map_outputs) == 1:
         logging.info("Single map output detected. No reduction query needed.")
         return map_outputs[0]
-    
-    combined = "\n".join(map_outputs)
+
+    # Wrap each map output in <output> tags
+    tagged_outputs = [f"<output>\n{output}\n</output>" for output in map_outputs]
+
+    # Combine all tagged outputs
+    combined = "\n".join(tagged_outputs)
     logging.info(f"Combined map outputs token count (approx.): {token_count(combined):,}")
-    
+
     # If the combined output exceeds the context size, split into intermediate chunks.
     if token_count(combined) > context_size:
         logging.info("Combined output exceeds context limit. Splitting into intermediate chunks.")
         chunks = []
         current_chunk = ""
-        for output in map_outputs:
+        for output in tagged_outputs:
             if current_chunk and token_count(current_chunk + "\n" + output) > context_size:
                 chunks.append(current_chunk)
                 current_chunk = output
@@ -260,17 +264,16 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
             additional_expected = len(chunks) - 1
             llm_total_queries += additional_expected
             logging.info(f"Additional estimated LLM queries from reduce splitting: {additional_expected} (New total: {llm_total_queries})")
-        
+
         intermediate_results = []
         for i, chunk in enumerate(chunks, start=1):
             logging.info(f"Reducing intermediate chunk {i:,} of {len(chunks):,}.")
             prompt = (
-                "Below are some partial answers produced by processing document chunks between the <partial_content> ... </partial_content> tags. "
-                "Based solely on the text provided in these partial answers, please consolidate them into a single answer. "
-                "Do not access external data. "
-                "Be sure to keep and list all source file names mentioned in the content.\n\n"
+                "Below are some partial answers produced by processing document chunks between the <partial_content> <output> ... </output> ... </partial_content> tags. "
+                "Please consolidate them into a single answer based solely on the text provided. "
+                "Do not access external data. Be sure to keep and list all source file names mentioned.\n\n"
                 f"<partial_content>\n{chunk}\n</partial_content>\n\n"
-                "Intermediate question between <question> ... </question> tags: \n"
+                "Intermediate question between <question> ... </question> tags:\n"
                 f"<question>\n{question}\n</question>\n\n"
                 "Provide a consolidated answer including citations referencing the document sources (file names)."
             )
@@ -282,12 +285,11 @@ def reduce_stage(map_outputs, question: str, model="phi4", context_size=37500):
     else:
         logging.info("Combined output is within context limit. Finalizing reduction.")
         prompt = (
-            "Below are the answers produced by processing document chunks between the <combined_content> ... </combined_content> tags. "
-            "Based solely on the text provided in these answers, please consolidate them into a single final answer. "
-            "Do not access external data. "
-            "Be sure to keep and list all source file names mentioned in the content.\n\n"
+            "Below are the answers produced by processing document chunks between the <combined_content> <output> ... </output> ... </combined_content> tags. "
+            "Based solely on the text provided, please consolidate them into a single final answer. "
+            "Do not access external data. Be sure to keep and list all source file names mentioned.\n\n"
             f"<combined_content>\n{combined}\n</combined_content>\n\n"
-            "Final question between <question> ... </question> tags: \n"
+            "Final question between <question> ... </question> tags:\n"
             f"<question>\n{question}\n</question>\n\n"
             "Provide a consolidated final answer including citations referencing the document sources (file names)."
         )
