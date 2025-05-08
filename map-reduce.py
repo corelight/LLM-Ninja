@@ -49,7 +49,6 @@ def safe_invoke(prompt: str) -> str:
     # If -e is set, print and log the full LLM query.
     if SHOW_FULL_QUERY:
         query_output = "LLM Query:\n" + prompt + "\n" + ("-" * 80)
-        print(query_output)
         logging.info(query_output)
     response = chat_model.invoke(prompt)
     content = getattr(response, "content", None)
@@ -61,7 +60,6 @@ def safe_invoke(prompt: str) -> str:
     # If -n is set, print and log the full LLM response.
     if PRINT_ALL_RESPONSES:
         response_output = "LLM Response:\n" + content + "\n" + ("-" * 80)
-        print(response_output)
         logging.info(response_output)
     llm_queries_completed += 1
     logging.info(f"LLM queries completed: {llm_queries_completed}/{llm_total_queries}")
