@@ -315,10 +315,16 @@ def main():
                             help="Chunk size for splitting the documents (default: 65000).")
     parser_arg.add_argument("-o", "--chunk_overlap", type=int, default=0,
                             help="Chunk overlap for splitting the documents (default: 0).")
-    parser_arg.add_argument("-t", "--temperature", type=float, default=0.0,
-                            help="Temperature for the ChatOllama model (default: 0.0).")
-    parser_arg.add_argument("-x", "--num_ctx", type=int, default=37500,
-                            help="Context window size for ChatOllama (default: 37500).")
+    parser_arg.add_argument("-t", "--temperature", type=float, default=None,
+                            help="Temperature for ChatOllama (if omitted, use the model's default).")
+    parser_arg.add_argument("-x", "--num_ctx", type=int, default=None,
+                            help="Context window size for ChatOllama (if omitted, use the model's default).")
+    parser_arg.add_argument("-g", "--num_predict", type=int, default=None,
+                            help="Number of tokens to predict for ChatOllama (if omitted, use the model's default)")
+    parser_arg.add_argument("-K", "--top_k", type=int, default=None,
+                            help="Top-k sampling cutoff for ChatOllama (if omitted, use the model's default)")
+    parser_arg.add_argument("-P", "--top_p", type=float, default=None,
+                            help="Top-p (nucleus) sampling probability for ChatOllama (if omitted, use the model's default)")
     parser_arg.add_argument("-u", "--output", type=str,
                             help="If provided, write the final response to the specified file.")
     parser_arg.add_argument("-s", "--tika_server", type=str, default="http://localhost:9998",
@@ -349,14 +355,23 @@ def main():
     else:
         query = "Summarize the input context."
 
-    chat_model = ChatOllama(
-        model=args.model,
-        temperature=args.temperature,
-        num_ctx=args.num_ctx,
-        num_predict=-2,
-        seed=3,
-        keep_alive=-1
-    )
+    init_kwargs = {
+        "model": args.model,
+        "seed": 3,
+        "keep_alive": -1,
+    }
+    if args.temperature is not None:
+        init_kwargs["temperature"] = args.temperature
+    if args.num_ctx is not None:
+        init_kwargs["num_ctx"] = args.num_ctx
+    if args.top_k is not None:
+        init_kwargs["top_k"] = args.top_k
+    if args.top_p is not None:
+        init_kwargs["top_p"] = args.top_p
+    if args.num_predict is not None:
+        init_kwargs["num_predict"] = args.num_predict
+
+    chat_model = ChatOllama(**init_kwargs)
 
     regex_patterns = [re.compile(pattern.strip()) for pattern in args.path.split(',')]
     documents = crawl_directory_to_documents(args.directory, regex_patterns)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import subprocess
 import argparse
@@ -29,16 +30,22 @@ def main():
                         help="Chunk size for splitting the documents (default: 65000).")
     parser.add_argument("-o", "--chunk_overlap", type=int, default=0,
                         help="Chunk overlap for splitting the documents (default: 0).")
-    parser.add_argument("-t", "--temperature", type=float, default=0.0,
-                        help="Temperature for the ChatOllama model (default: 0.0).")
-    parser.add_argument("-x", "--num_ctx", type=int, default=37500,
-                        help="Context window size for ChatOllama (default: 37500).")
+    parser.add_argument("-t", "--temperature", type=float, default=None,
+                        help="Temperature for the ChatOllama model (if omitted, use the model's default).")
+    parser.add_argument("-x", "--num_ctx", type=int, default=None,
+                        help="Context window size for ChatOllama (if omitted, use the model's default).")
+    parser.add_argument("-K", "--top_k", type=int, default=None,
+                        help="Top-k sampling cutoff for ChatOllama (if omitted, use default).")
+    parser.add_argument("-P", "--top_p", type=float, default=None,
+                        help="Top-p (nucleus) sampling for ChatOllama (if omitted, use default).")
+    parser.add_argument("-g", "--num_predict", type=int, default=None,
+                        help="Number of tokens to predict for ChatOllama (if omitted, use default).")
     parser.add_argument("-n", "--print_responses", action="store_true",
-                        help="Output all LLM response as they happen.")
+                        help="Output all LLM responses as they happen.")
     parser.add_argument("-e", "--print_queries", action="store_true",
                         help="Show the full LLM queries (prompt text) in the output as they happen.")
     parser.add_argument("-l", "--log", action="store_true",
-                        help="If provided, capture all output (including stderr) and save logs to map-reduce-subdirs.log in the current directory")
+                        help="If provided, capture all output (including stderr) and save logs to map-reduce-subdirs.log in the current directory.")
     parser.add_argument("-s", "--tika_server", type=str, default="http://localhost:9998",
                         help="The Tika server endpoint URL (default: http://localhost:9998).")
     parser.add_argument("-z", "--debug", action="store_true",
@@ -50,27 +57,34 @@ def main():
     # Prepare the additional options (everything except -d, -u, and -l).
     additional_options = []
     if args.path is not None:
-        additional_options.extend(["-p", args.path])
+        additional_options += ["-p", args.path]
     if args.query is not None:
-        additional_options.extend(["-q", args.query])
+        additional_options += ["-q", args.query]
     if args.query_file is not None:
-        additional_options.extend(["-f", args.query_file])
-    additional_options.extend(["-m", args.model])
-    additional_options.extend(["-c", str(args.chunk_size)])
-    additional_options.extend(["-o", str(args.chunk_overlap)])
-    additional_options.extend(["-t", str(args.temperature)])
-    additional_options.extend(["-x", str(args.num_ctx)])
-    additional_options.extend(["-s", args.tika_server])
+        additional_options += ["-f", args.query_file]
+    additional_options += ["-m", args.model]
+    additional_options += ["-c", str(args.chunk_size)]
+    additional_options += ["-o", str(args.chunk_overlap)]
+    if args.temperature is not None:
+        additional_options += ["-t", str(args.temperature)]
+    if args.num_ctx is not None:
+        additional_options += ["-x", str(args.num_ctx)]
+    if args.top_k is not None:
+        additional_options += ["-K", str(args.top_k)]
+    if args.top_p is not None:
+        additional_options += ["-P", str(args.top_p)]
+    if args.num_predict is not None:
+        additional_options += ["-g", str(args.num_predict)]
+    additional_options += ["-s", args.tika_server]
     if args.debug:
         additional_options.append("-z")
     if args.print_responses:
         additional_options.append("-n")
     if args.print_queries:
         additional_options.append("-e")
-    
+
     # Log file for concatenated logs.
     concatenated_log_file = os.path.join(os.getcwd(), "map-reduce-subdirs.log")
-    # If the log file exists and -l is provided, delete it before starting.
     if args.log and os.path.exists(concatenated_log_file):
         os.remove(concatenated_log_file)
 
@@ -78,31 +92,26 @@ def main():
     subdirs = [item for item in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, item))]
     for item in sorted(subdirs, key=lambda s: s.lower()):
         subdir_path = os.path.join(parent_dir, item)
-        # Save the output file in the current working directory.
         output_file = os.path.join(os.getcwd(), f"{item}.txt")
         if os.path.exists(output_file):
             print(f"Skipping directory: {subdir_path} (output already exists: {output_file})")
             continue
 
         print(f"Processing directory: {subdir_path}")
-
         # Build the command. Note: We do NOT pass the -l option to map-reduce.py.
-        cmd = ["python", args.script, "-d", subdir_path, "-u", output_file]
-        cmd.extend(additional_options)
-        
+        cmd = ["python", args.script, "-d", subdir_path, "-u", output_file] + additional_options
+
         if args.log:
             # Append header for this subdirectory to the log file.
             with open(concatenated_log_file, "a") as logf:
-                logf.write(f"===== Log for subdirectory: {subdir_path} =====\n")
-            
-            # Run the command, capturing all output (stdout and stderr).
+                logf.write(f"===== Log for subdirectory: {subdir_path} =====")
+            # Run the command, capturing all output.
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            # Open the log file once for the duration of this process, so we can write each line as it's produced.
             with open(concatenated_log_file, "a") as logf:
                 for line in process.stdout:
-                    sys.stdout.write(line)   # Print each line as it comes.
+                    sys.stdout.write(line)
                     sys.stdout.flush()
-                    logf.write(line)         # Write the same line to the log file.
+                    logf.write(line)
                     logf.flush()
             process.wait()
             # Append a separator after the output.

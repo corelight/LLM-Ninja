@@ -54,7 +54,8 @@ pip install -r requirements.txt
 #### Usage:
 Run the script with the following command:
 ```bash
-python map-reduce.py --directory /path/to/your/documents --query "Your query here"
+python map-reduce.py --directory /path/to/your/documents --query "Your query here" \
+  --temperature 0.7 --num_ctx 20000 --top_k 100 --top_p 0.95 --num_predict 50
 ```
 
 ##### Command-Line Arguments:
@@ -66,8 +67,11 @@ python map-reduce.py --directory /path/to/your/documents --query "Your query her
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
 - `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
 - `-o, --chunk_overlap`: Overlap between chunks (default: `0`).
-- `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
-- `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
+- `-t, --temperature`: Temperature for the ChatOllama model (if omitted, uses model default).
+- `-x, --num_ctx`: Context window size for ChatOllama (if omitted, uses model default).
+- `-K, --top_k`: Top-k sampling cutoff for ChatOllama (if omitted, uses model default).
+- `-P, --top_p`: Top-p (nucleus) sampling probability for ChatOllama (if omitted, uses model default).
+- `-g, --num_predict`: Number of tokens to predict for ChatOllama (if omitted, uses model default).
 - `-n, --print_responses`: Output all LLM response as they happen.
 - `-e, --print_queries`: Show the full LLM queries (prompt text) in the output as they happen.
 - `-u, --output`: If provided, write the final response to the specified file.
@@ -155,14 +159,19 @@ This script enables batch processing of multiple first-level subdirectories. It 
 - `-m, --model`: Specify the Ollama model (default: `phi4`).
 - `-c, --chunk_size`: Chunk size for splitting documents (default: `75000`).
 - `-o, --chunk_overlap`: Overlap between chunks (default: `0`).
-- `-t, --temperature`: Temperature for the ChatOllama model (default: `0.0`).
-- `-x, --num_ctx`: Context window size for ChatOllama (default: `37500`).
+- `-t, --temperature`: Temperature for the ChatOllama model (if omitted, uses model default).
+- `-x, --num_ctx`: Context window size for ChatOllama (if omitted, uses model default).
+- `-K, --top_k`: Top-k sampling cutoff for ChatOllama (if omitted, uses model default).
+- `-P, --top_p`: Top-p (nucleus) sampling probability for ChatOllama (if omitted, uses model default).
+- `-g, --num_predict`: Number of tokens to predict for ChatOllama (if omitted, uses model default).
 - `-s, --tika_server`: The Tika server endpoint URL (default: `http://localhost:9998`).
 - `-z, --debug`: Enable debug output for detailed logs.
 
 #### Usage Example:
 ```bash
-python map-reduce-subdirs.py /path/to/parent_directory -q "Summarize the documents" -p ".*\.pdf"
+python map-reduce-subdirs.py /path/to/parent_directory \
+  --query "Summarize the documents" --temperature 0.7 --num_ctx 20000 \
+  --top_k 100 --top_p 0.95 --num_predict 50
 ```
 
 This command processes each first-level subdirectory within `/path/to/parent_directory` using `map-reduce.py` for document processing and saves the output for each subdirectory in the current working directory as `<subdirectory_name>.txt`.
