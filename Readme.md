@@ -8,6 +8,7 @@
   - [map-reduce.py](#map-reducepy)
   - [map-reduce-subdirs.py](#map-reduce-subdirspy)
   - [open-webui-knowledge.py](#open-webui-knowledgepy)
+    - [Docker](#run-open-webui-and-tika-in-docker)
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
@@ -261,6 +262,43 @@ If you open Workspace and go to Knowledge, you will see your new knowledge base 
 You can then type `#netsupport` in a chat prompt and click on the new collection for an example query to an LLM:
 
 ![open-webui NetSupport Knowledge Response](images/open-webui-knowledge-netsupport-3.png)
+
+#### Run Open-WebUI and Tika in Docker
+
+Here is a docker compose file you can use to run open-webui with Tika file content support in Docker, with Ollama on your host machine:
+
+```
+version: "3.8"
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      WEBUI_AUTH: "False"
+    volumes:
+      - open-webui:/app/backend/data
+    restart: always
+    # Map host.docker.internal to the Docker gateway so the container can reach services on the host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  tika:
+    image: apache/tika:latest-full
+    container_name: tika
+    ports:
+      - "9998:9998"
+    restart: unless-stopped
+
+volumes:
+  open-webui:
+```
+
+Be sure to set Tika as the document content extractor in the settings screen with a URL of `http://tika:9998`:
+
+   ![open-webui Document Ingestion](images/open-webui-settings-documents.png)
 
 ## Getting Started
 
