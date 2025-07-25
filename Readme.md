@@ -6,9 +6,30 @@
 - [Overview](#overview)
 - [Scripts](#scripts)
   - [map-reduce.py](#map-reducepy)
+    - [Features](#features)
+    - [Prerequisites](#prerequisites)
+    - [Usage](#usage)
+      - [Command-Line Arguments](#command-line-arguments)
+    - [How It Works](#how-it-works)
+    - [Example](#example)
   - [map-reduce-subdirs.py](#map-reduce-subdirspy)
+    - [Command-Line Options](#command-line-options)
+    - [Usage Example](#usage-example)
   - [open-webui-knowledge.py](#open-webui-knowledgepy)
-    - [Docker](#run-open-webui-and-tika-in-docker)
+    - [Prerequisites](#prerequisites-1)
+    - [Command-Line Arguments](#command-line-arguments-1)
+    - [Example](#example-1)
+    - [Run Open-WebUI and Tika in Docker](#run-open-webui-and-tika-in-docker)
+  - [save_vale_prompts.py](#save_vale_promptspy)
+    - [Features](#features-1)
+    - [Prerequisites](#prerequisites-2)
+    - [Configuration](#configuration)
+    - [Usage](#usage-1)
+      - [Command-Line Arguments](#command-line-arguments-2)
+    - [How It Works](#how-it-works-1)
+    - [Using the Generated Prompts](#using-the-generated-prompts)
+    - [Iterative Refinement Process](#iterative-refinement-process)
+    - [Example](#example-2)
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
@@ -23,7 +44,9 @@ LLM-Ninja is structured to support multiple scripts. Each script is organized in
 
 ### map-reduce.py
 
-This script demonstrates a complete map-reduce pipeline to process documents and query an LLM. It leverages Apache Tika for text extraction, LangChain for document splitting, ChatOllama for LLM integration, and Ollama to serve the LLM model.
+**Summary:** A complete map-reduce pipeline that processes documents through an LLM to answer queries. Extracts text from files, splits content into chunks, sends each chunk to an LLM with your query, and consolidates responses into a final answer with source citations.
+
+This script leverages Apache Tika for text extraction, LangChain for document splitting, ChatOllama for LLM integration, and Ollama to serve the LLM model.
 
 #### Features:
 - **Document Ingestion:** Recursively traverses a directory to extract text from files using Apache Tika.
@@ -148,7 +171,9 @@ The Zeek package detects NetSupport by using a combination of signature-based de
 
 ### map-reduce-subdirs.py
 
-This script enables batch processing of multiple first-level subdirectories. It automatically locates `map-reduce.py` in the same directory as itself and saves the output files in the current working directory. If an output file for a subdirectory already exists, that subdirectory is skipped. The subdirectories are processed in case-insensitive order.
+**Summary:** Batch processor that runs `map-reduce.py` on multiple subdirectories automatically. Processes each first-level subdirectory in a parent directory, saves individual output files, and skips directories that already have output files. Perfect for analyzing multiple projects or document collections at once.
+
+This script automatically locates `map-reduce.py` in the same directory as itself and saves the output files in the current working directory. If an output file for a subdirectory already exists, that subdirectory is skipped. The subdirectories are processed in case-insensitive order.
 
 #### Command-Line Options:
 - **parent_directory** (positional): Parent directory containing subdirectories to process.
@@ -179,7 +204,8 @@ This command processes each first-level subdirectory within `/path/to/parent_dir
 
 ### open-webui-knowledge.py
 
-This Python script ingests documents into [open-webui](https://github.com/open-webui/open-webui) for [knowledge based](https://docs.openwebui.com/features/workspace/knowledge/) LLM queries.
+**Summary:** Document ingestion tool for [open-webui](https://github.com/open-webui/open-webui) for [knowledge based](https://docs.openwebui.com/features/workspace/knowledge/). Extracts text from files using Apache Tika, uploads them to Open WebUI's knowledge system, and creates searchable document collections that can be referenced in LLM conversations.
+
 
 #### Prerequisites:
 - **Python 3.7+**
@@ -299,6 +325,290 @@ volumes:
 Be sure to set Tika as the document content extractor in the settings screen with a URL of `http://tika:9998`:
 
    ![open-webui Document Ingestion](images/open-webui-settings-documents.png)
+
+### save_vale_prompts.py
+
+**Summary:** AI-powered style guide fixer that uses [Vale](https://vale.sh/) linting and Microsoft Style Guide definitions. Analyzes text/markdown files recursively for style violations, generates detailed prompts for LLMs to fix issues, and supports iterative refinement until all desired style guide compliance is achieved.
+
+#### Features:
+- **Vale Integration:** Runs Vale in JSON mode on text, markdown, and fixed files to detect style guide violations
+- **Alert Extraction:** Extracts and formats all Vale alerts/issues for AI processing
+- **Vocabulary Lookup:** Automatically looks up relevant definitions from the Microsoft Style Guide for vocabulary-related alerts
+- **Prompt Generation:** Creates comprehensive prompts that can be used with AI models to automatically fix the detected issues
+- **Batch Processing:** Processes all `.txt`, `.md`, and `.fixed` files in a directory tree recursively
+
+#### Prerequisites:
+- **Python 3.7+**
+- **Vale Installation:**  
+  Install Vale from [https://vale.sh/](https://vale.sh/). The script requires Vale to be available in your PATH.
+- **Microsoft Style Guide:**  
+  Clone the Microsoft Style Guide repository:
+  ```bash
+  git clone https://github.com/MicrosoftDocs/microsoft-style-guide.git
+  ```
+  The script expects the `a-z-word-list-term-collections` directory to be at `./microsoft-style-guide/styleguide/a-z-word-list-term-collections`.
+- Add a `.vale.ini` file in your current directory, as discussed below.  Note that this file name starts with a period.  Once you have the `.vale.ini` file, type `vale sync` to pull the style files it needs into a `styles` directory in the current directory.
+
+#### Configuration:
+The script uses a `.vale.ini` configuration file that should be placed in your project root. This file configures Vale to:
+- Use the Microsoft style guide
+- Treat `.md`, `.txt` and `.fixed` files as Markdown for analysis
+- Set minimum alert level to "suggestion"
+- Ignore content within `<think>` tags from LLM output
+
+Example `vale.ini`:
+```ini
+StylesPath = styles
+
+MinAlertLevel = suggestion
+
+Packages = Microsoft
+
+[formats]
+txt = md
+fixed = md
+
+[*.{md,txt,fixed}]
+BasedOnStyles = Microsoft
+BlockIgnores  = (?s) *(<think>.*?</think>)
+```
+
+#### Usage:
+Run the script with the following command:
+```bash
+python save_vale_prompts.py --input-dir ./txt --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections
+```
+
+##### Command-Line Arguments:
+- `--input-dir`: **(Required)** Root directory to scan for `.txt` files
+- `--styleguide-dir`: **(Required)** Path to the `a-z-word-list-term-collections` directory from the Microsoft Style Guide
+
+  After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-collections` directory will be located at:
+  ```
+  ./microsoft-style-guide/styleguide/a-z-word-list-term-collections/
+  ```
+  
+  This directory contains alphabetically organized subdirectories (a/, b/, c/, etc.) with markdown files containing vocabulary definitions. The script searches these files to find relevant definitions for vocabulary-related Vale alerts.
+
+#### How It Works:
+1. **File Discovery:**  
+   The script recursively walks through the input directory looking for `.txt`, `.md`, or `.fixed` files.
+2. **Vale Analysis:**  
+   For each file found, it runs Vale in JSON mode to detect style guide violations.
+3. **Alert Processing:**  
+   Extracts all alerts from Vale's JSON output and formats them for AI processing.
+4. **Vocabulary Lookup:**  
+   For vocabulary-related alerts (ending with `.Vocab`), it looks up the relevant definition from the Microsoft Style Guide.
+5. **Prompt Generation:**  
+   Creates a comprehensive prompt that includes the original content, all detected alerts, and relevant vocabulary definitions.
+6. **Output:**  
+   Saves a `.prompt` file next to each original `.txt`/`.md`/`.fixed` file for use with AI models.
+
+#### Using the Generated Prompts:
+
+1. **Copy the content** from the `.prompt` file
+2. **Paste it into your favorite LLM** (ChatGPT, Claude, Gemini, etc.)
+3. **Copy the LLM's response** (the fixed Markdown content)
+4. **Save the response** as a new `.txt` or `.fixed` file
+
+The generated `.prompt` file will contain:
+- The original document content
+- All Vale alerts in JSON format
+- Relevant vocabulary definitions (if any)
+- Instructions for the AI model on how to fix the issues
+
+#### Iterative Refinement Process:
+
+You can iteratively refine your content by repeating the process:
+
+1. **Run Vale again** on the LLM-fixed content to check for remaining alerts:
+   ```bash
+   vale your-fixed-file.txt
+   ```
+
+2. **If there are still alerts**, cut and paste the latest Vale alerts from the last step into your LLM and ask it to correct the fixed text even further.  Take this LLM output and update `your-fixed-file.txt`.
+
+3. **Repeat the process** until you have no more Vale alerts that you care about.
+
+This iterative approach allows you to progressively improve your content's adherence to the Microsoft Style Guide, addressing any remaining issues that the LLM might have missed in previous iterations.
+
+The prompt is designed to be used with AI models to automatically fix style guide violations while preserving the original content and meaning.
+
+#### Example:
+Below is an example using Microsoft's own [SECURITY.md](https://github.com/microsoft/.github/blob/main/SECURITY.md) file, demonstrating how the script can fix style guide violations even in official Microsoft documentation:
+
+**Step 1: Initial Vale Analysis**
+```bash
+% vale txt/SECURITY.md
+```
+
+Output shows multiple style violations:
+```
+txt/SECURITY.md
+ 5:1     suggestion  Use the Oxford comma in         Microsoft.OxfordComma
+                     'DotNet, AspNet and Xamarin.'.
+ 5:33    warning     Try to avoid using              Microsoft.We
+                     first-person plural like
+                     'our'.
+ 5:68    warning     Remove 'seriously' if it's not  Microsoft.Adverbs
+                     important to the meaning of
+                     the statement.
+ 5:139   warning     Try to avoid using              Microsoft.We
+                     first-person plural like
+                     'our'.
+ 7:1     suggestion  Try to keep sentences short (<  Microsoft.SentenceLength
+                     30 words).
+ 7:214   warning     Try to avoid using              Microsoft.We
+                     first-person plural like 'us'.
+ 9:4     suggestion  'Reporting Security Issues'     Microsoft.Headings
+                     should use sentence-style
+                     capitalization.
+ 11:10   error       Use 'don't' instead of 'do      Microsoft.Contractions
+                     not'.
+ 15:152  warning     Try to avoid using              Microsoft.We
+                     first-person plural like
+                     'our'.
+ 15:156  suggestion  'PGP' has no definition.        Microsoft.Acronyms
+ 15:163  suggestion  Try to simplify this sentence.  Microsoft.Semicolon
+ 15:229  suggestion  'PGP' has no definition.        Microsoft.Acronyms
+ 17:71   error       Use 'don't' instead of 'do      Microsoft.Contractions
+                     not'.
+ 17:109  suggestion  Verify your use of 'ensure'     Microsoft.Vocab
+                     with the A-Z word list.
+ 17:116  warning     Try to avoid using              Microsoft.We
+                     first-person plural like 'we'.
+ 17:178  suggestion  'be found' looks like passive   Microsoft.Passive
+                     voice.
+ 19:92   warning     Try to avoid using              Microsoft.We
+                     first-person plural like 'us'.
+ 21:20   error       Use 'for example' instead of    Microsoft.Foreign
+                     'e.g. '.
+ 22:30   error       Don't add '(s)' to a singular   Microsoft.Plurals
+                     noun. Use plural instead.
+ 23:75   warning     For a general audience, use     Microsoft.GeneralURL
+                     'address' rather than 'URL'.
+ 29:28   warning     Try to avoid using              Microsoft.We
+                     first-person plural like 'us'.
+ 29:55   warning     Remove 'quickly' if it's not    Microsoft.Adverbs
+                     important to the meaning of
+                     the statement.
+ 31:116  warning     Try to avoid using              Microsoft.We
+                     first-person plural like
+                     'our'.
+ 31:219  warning     Try to avoid using              Microsoft.We
+                     first-person plural like
+                     'our'.
+ 33:4    suggestion  'Preferred Languages'           Microsoft.Headings
+                     should use sentence-style
+                     capitalization.
+ 35:1    warning     Try to avoid using              Microsoft.We
+                     first-person plural like 'We'.
+✖ 4 errors, 13 warnings and 9 suggestions in 1 file.
+```
+
+**Step 2: Generate AI Prompts**
+```bash
+% python save_vale_prompts.py --input-dir txt --styleguide-dir microsoft-style-guide/styleguide/a-z-word-list-term-collections
+```
+
+Output:
+```
+Processing txt/SECURITY.md
+Prompt written to txt/SECURITY.md.prompt
+
+All prompts generated.
+```
+
+**Step 3: Use LLM to Fix Issues**
+Copy the generated `.prompt` file content into ChatGPT, Claude, or another LLM to get the corrected version. Save the LLM's output as `SECURITY.md.fixed`.
+
+**Step 4: Iterative Refinement**
+```bash
+% vale txt/SECURITY.md.fixed
+```
+
+Shows remaining issues:
+```
+txt/SECURITY.md.fixed
+ 15:163  suggestion  'PGP' has no definition.        Microsoft.Acronyms
+ 15:251  suggestion  'PGP' has no definition.        Microsoft.Acronyms
+ 17:55   error       Use 'don't' instead of 'do      Microsoft.Contractions
+                     not'.
+ 17:188  suggestion  'be found' looks like passive   Microsoft.Passive
+                     voice.
+✖ 1 error, 0 warnings and 3 suggestions in 1 file.
+```
+
+**Step 5: Final Iteration**
+Run the remaining Vale alerts through the LLM again to get `SECURITY.md.fixed.2`:
+
+```bash
+% vale txt/SECURITY.md.fixed.2
+✔ 0 errors, 0 warnings and 0 suggestions in 0 files.
+```
+
+**Result:**
+The final corrected version shows significant improvements in Microsoft Style Guide compliance:
+
+- **Before:** "Microsoft takes the security of our software products and services seriously, which includes..."
+- **After:** "Microsoft prioritizes the security of its software products and services, including..."
+
+- **Before:** "If you believe you have found a security vulnerability..."
+- **After:** "If you discover a security vulnerability..."
+
+- **Before:** "Please do not report security vulnerabilities..."
+- **After:** "Please don't report security vulnerabilities..."
+
+This example demonstrates that even Microsoft's own official documentation can benefit from AI-assisted style guide compliance using this script. The iterative process successfully transformed a document with 26 style violations into one that fully complies with the Microsoft Style Guide.
+
+The full wdiff of the original and fixed files is as follows:
+
+```
+% wdiff txt/SECURITY.md txt/SECURITY.md.fixed.2
+<!-- BEGIN MICROSOFT SECURITY.MD V0.0.9 BLOCK -->
+
+## Security
+
+Microsoft [-takes-] {+prioritizes+} the security of [-our-] {+its+} software products and [-services seriously, which includes-] {+services, including+} all source code repositories managed through [-our-] {+its+} GitHub [-organizations, which include-] {+organizations:+} [Microsoft](https://github.com/Microsoft), [Azure](https://github.com/Azure), [DotNet](https://github.com/dotnet), [-[AspNet](https://github.com/aspnet)-] {+[AspNet](https://github.com/aspnet),+} and [Xamarin](https://github.com/xamarin).
+
+If you [-believe you have found-] {+discover+} a security vulnerability in any Microsoft-owned repository that meets [-[Microsoft's-] {+Microsoft's+} definition of a security [-vulnerability](https://aka.ms/security.md/definition),-] {+vulnerability,+} please report [-it to us-] {+the issue+} as described below.
+
+## Reporting [-Security Issues-] {+security issues+}
+
+**Please [-do not-] {+don't+} report security vulnerabilities through public GitHub issues.**
+
+Instead, please report them to the Microsoft Security Response Center (MSRC) at [https://msrc.microsoft.com/create-report](https://aka.ms/security.md/msrc/create-report).
+
+If you prefer to submit without logging in, send email to [secure@microsoft.com](mailto:secure@microsoft.com). If possible, encrypt your message with [-our PGP key; please download it-] {+Microsoft's Pretty Good Privacy (PGP) key. Download the key+} from the [Microsoft Security Response Center PGP [-Key-] {+key+} page](https://aka.ms/security.md/msrc/pgp).
+
+You should receive a response within 24 hours. If [-for some reason-] you [-do not, please-] {+don't receive a response,+} follow up via email [-to ensure we received-] {+so Microsoft can confirm receipt of+} your original message. [-Additional-] {+Find additional+} information [-can be found-] at [microsoft.com/msrc](https://www.microsoft.com/msrc).
+
+Please include the requested information listed below (as much as you can provide) to help [-us-] {+Microsoft+} better understand the nature and scope of the possible issue:
+
+* Type of issue [-(e.g.-] {+(for example,+} buffer overflow, SQL injection, cross-site scripting, etc.)
+* Full paths of source [-file(s)-] {+files+} related to the manifestation of the issue
+* The location of the affected source code (tag/branch/commit or direct [-URL)-] {+address)+}
+* Any special configuration required to reproduce the issue
+* Step-by-step instructions to reproduce the issue
+* Proof-of-concept or exploit code (if possible)
+* Impact of the issue, including how an attacker might exploit the issue
+
+This information will help [-us-] {+Microsoft+} triage your [-report more quickly.-] {+report.+}
+
+If you are reporting for a bug bounty, more complete reports can contribute to a higher bounty award. [-Please visit our-] {+Visit the+} [Microsoft Bug Bounty Program](https://aka.ms/security.md/msrc/bounty) page for more details about [-our-] active programs.
+
+## Preferred [-Languages
+
+We prefer all-] {+languages
+
+All+} communications [-to-] {+should+} be in English.
+
+## Policy
+
+Microsoft follows the principle of [Coordinated Vulnerability Disclosure](https://aka.ms/security.md/cvd).
+
+<!-- END MICROSOFT SECURITY.MD BLOCK -->
+```
 
 ## Getting Started
 
