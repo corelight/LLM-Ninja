@@ -422,10 +422,10 @@ python llm-styleguide-helper.py --input-dir ./txt --styleguide-dir ./microsoft-s
 - `--model`: **(Optional)** Specify Gemini model to use (e.g., 'gemini-2.5-flash'). If not specified, uses Gemini CLI default
 - `--vale-ini`: **(Optional)** Path to Vale configuration file (.vale.ini). If not specified, Vale uses its default configuration
 
-  After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-collections` directory will be located at:
-  ```
-  ./microsoft-style-guide/styleguide/a-z-word-list-term-collections/
-  ```
+After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-collections` directory will be located at:
+```
+./microsoft-style-guide/styleguide/a-z-word-list-term-collections/
+```
   
   This directory contains alphabetically organized subdirectories (a/, b/, c/, etc.) with markdown files containing vocabulary definitions. The script searches these files to find relevant definitions for vocabulary-related Vale alerts.
 
