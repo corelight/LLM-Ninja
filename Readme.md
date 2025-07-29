@@ -666,6 +666,50 @@ The automatic process successfully reduced Vale alerts from 26 to 0 in just 4 it
 
 ```bash
 % wdiff txt/SECURITY.md txt/SECURITY.md.fixed
+
+<!-- BEGIN MICROSOFT SECURITY.MD V0.0.9 BLOCK -->
+
+## Security
+
+Microsoft takes the security of [-our-] {+its+} software products and [-services seriously,-] {+services,+} which includes all source code repositories managed through [-our-] {+its+} GitHub organizations, which include [Microsoft](https://github.com/Microsoft), [Azure](https://github.com/Azure), [DotNet](https://github.com/dotnet), [-[AspNet](https://github.com/aspnet)-] {+[AspNet](https://github.com/aspnet),+} and [Xamarin](https://github.com/xamarin).
+
+If you believe you have found a security vulnerability in any Microsoft-owned repository that meets [Microsoft's definition of a security vulnerability](https://aka.ms/security.md/definition), [-please-] report it [-to us-] as described below.
+
+## Reporting [-Security Issues-] {+security issues+}
+
+**Please [-do not-] {+don't+} report security vulnerabilities through public GitHub issues.**
+
+Instead, please report them to the Microsoft Security Response Center (MSRC) at [https://msrc.microsoft.com/create-report](https://aka.ms/security.md/msrc/create-report).
+
+If you prefer to submit without logging in, send email to [secure@microsoft.com](mailto:secure@microsoft.com). If possible, encrypt your message with [-our PGP key; please-] {+the Pretty Good Privacy (PGP) key. Please+} download it from the [Microsoft Security Response Center PGP Key page](https://aka.ms/security.md/msrc/pgp).
+
+You should receive a response within 24 hours. If for some reason you [-do not,-] {+don't,+} please follow up via email to [-ensure we-] {+make sure Microsoft+} received your original message. [-Additional information-] {+You+} can [-be found-] {+find additional information+} at [microsoft.com/msrc](https://www.microsoft.com/msrc).
+
+Please include the requested information listed below (as much as you can provide) to help [-us-] {+Microsoft+} better understand the nature and scope of the possible issue:
+
+  * Type of issue [-(e.g.-] {+(for example,+} buffer overflow, SQL injection, cross-site scripting, etc.)
+  * Full paths of source [-file(s)-] {+files+} related to the manifestation of the issue
+  * The location of the affected source code (tag/branch/commit or direct [-URL)-] {+address)+}
+  * Any special configuration required to reproduce the issue
+  * Step-by-step instructions to reproduce the issue
+  * Proof-of-concept or exploit code (if possible)
+  * Impact of the issue, including how an attacker might exploit the issue
+
+This information will help [-us-] {+Microsoft+} triage your [-report more quickly.-] {+report.+}
+
+If you are reporting for a bug bounty, more complete reports can contribute to a higher bounty award. Please visit [-our-] {+the+} [Microsoft Bug Bounty Program](https://aka.ms/security.md/msrc/bounty) page for more details about [-our-] {+Microsoft's+} active programs.
+
+## Preferred [-Languages
+
+We prefer all-] {+languages
+
+All+} communications [-to-] {+should+} be in English.
+
+## Policy
+
+Microsoft follows the principle of [Coordinated Vulnerability Disclosure](https://aka.ms/security.md/cvd).
+
+<!-- END MICROSOFT SECURITY.MD BLOCK -->
 ```
 
 Key improvements include:
@@ -742,7 +786,7 @@ The automatic Gemini CLI integration successfully transformed a document with 26
    ```bash
    pip install -r requirements.txt
    ```
-   
+
 4. Now follow the instructions for the script above you would like to run.
 
 ## Contributing
