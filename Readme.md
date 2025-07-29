@@ -25,7 +25,7 @@
     - [Prerequisites](#prerequisites-2)
     - [Configuration](#configuration)
     - [Usage](#usage-1)
-    - [Command-Line Arguments](#command-line-arguments-2)
+      - [Command-Line Arguments](#command-line-arguments-2)
     - [How It Works](#how-it-works-1)
     - [Using the Generated Prompts](#using-the-generated-prompts)
     - [Iterative Refinement Process](#iterative-refinement-process)
