@@ -20,12 +20,12 @@
     - [Command-Line Arguments](#command-line-arguments-1)
     - [Example](#example-1)
     - [Run Open-WebUI and Tika in Docker](#run-open-webui-and-tika-in-docker)
-  - [save_vale_prompts.py](#save_vale_promptspy)
+  - [llm-styleguide-helper.py](#llm-styleguide-helperpy)
     - [Features](#features-1)
     - [Prerequisites](#prerequisites-2)
     - [Configuration](#configuration)
     - [Usage](#usage-1)
-      - [Command-Line Arguments](#command-line-arguments-2)
+    - [Command-Line Arguments](#command-line-arguments-2)
     - [How It Works](#how-it-works-1)
     - [Using the Generated Prompts](#using-the-generated-prompts)
     - [Iterative Refinement Process](#iterative-refinement-process)
@@ -326,16 +326,19 @@ Be sure to set Tika as the document content extractor in the settings screen wit
 
    ![open-webui Document Ingestion](images/open-webui-settings-documents.png)
 
-### save_vale_prompts.py
+### llm-styleguide-helper.py
 
-**Summary:** AI-powered style guide fixer that uses [Vale](https://vale.sh/) linting and Microsoft Style Guide definitions. Analyzes text/markdown files recursively for style violations, generates detailed prompts for LLMs to fix issues, and supports iterative refinement until all desired style guide compliance is achieved.
+**Summary:** AI-powered style guide fixer that uses [Vale](https://vale.sh/) linting and Microsoft Style Guide definitions. Analyzes text/markdown files recursively for style violations, generates detailed prompts for LLMs to fix issues, and supports both manual LLM interaction and automatic fixing with [Gemini CLI](https://github.com/google-gemini/gemini-cli) with iterative refinement until all desired style guide compliance is achieved.
 
 #### Features:
-- **Vale Integration:** Runs Vale in JSON mode on text, markdown, and fixed files to detect style guide violations
+- **Vale Integration:** Runs Vale in JSON mode on text and markdown files to detect style guide violations
 - **Alert Extraction:** Extracts and formats all Vale alerts/issues for AI processing
 - **Vocabulary Lookup:** Automatically looks up relevant definitions from the Microsoft Style Guide for vocabulary-related alerts
 - **Prompt Generation:** Creates comprehensive prompts that can be used with AI models to automatically fix the detected issues
-- **Batch Processing:** Processes all `.txt`, `.md`, and `.fixed` files in a directory tree recursively
+- **Batch Processing:** Processes all `.txt` and `.md` files in a directory tree recursively
+- **Gemini CLI Integration:** Optional automatic fixing using [Gemini CLI](https://github.com/google-gemini/gemini-cli) with iterative refinement
+- **Smart Iteration:** Automatically stops when no further improvements are detected (3 consecutive iterations without improvement)
+- **Flexible Output:** Supports both manual LLM interaction and fully automated processing
 
 #### Prerequisites:
 - **Python 3.7+**
@@ -347,7 +350,28 @@ Be sure to set Tika as the document content extractor in the settings screen wit
   git clone https://github.com/MicrosoftDocs/microsoft-style-guide.git
   ```
   The script expects the `a-z-word-list-term-collections` directory to be at `./microsoft-style-guide/styleguide/a-z-word-list-term-collections`.
-- Add a `.vale.ini` file in your current directory, as discussed below.  Note that this file name starts with a period.  Once you have the `.vale.ini` file, type `vale sync` to pull the style files it needs into a `styles` directory in the current directory.
+- **Vale Configuration:**  
+  Add a `.vale.ini` file in your current directory (note the leading period). Once you have the `.vale.ini` file, run `vale sync` to pull the style files it needs into a `styles` directory in the current directory.
+- **Gemini CLI (Optional, for automatic fixing):**  
+  Install [Gemini CLI](https://github.com/google-gemini/gemini-cli) and set it up:
+  
+  **Installation Options:**
+  - **With Node.js:** `npm install -g @google/gemini-cli`
+  - **With Homebrew:** `brew install gemini-cli`
+  - **With npx:** `npx https://github.com/google-gemini/gemini-cli`
+  
+  **Setup Required:**
+  After installation, you **must** run Gemini CLI once to authenticate:
+  ```bash
+  gemini
+  ```
+  This will prompt you to sign in with your Google account and grant permissions for Gemini.
+  
+  **Alternative Authentication:**
+  You can also use a Gemini API key instead of Google account authentication:
+  ```bash
+  export GEMINI_API_KEY="YOUR_API_KEY"
+  ```
 
 #### Configuration:
 The script uses a `.vale.ini` configuration file that should be placed in your project root. This file configures Vale to:
@@ -375,13 +399,28 @@ BlockIgnores  = (?s) *(<think>.*?</think>)
 
 #### Usage:
 Run the script with the following command:
+
+**Basic usage (generate prompts only):**
 ```bash
-python save_vale_prompts.py --input-dir ./txt --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections
+python llm-styleguide-helper.py --input-dir ./txt --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections
+```
+
+**With automatic Gemini CLI fixing:**
+```bash
+python llm-styleguide-helper.py --input-dir ./txt --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections --gemini
+```
+
+**With specific Gemini model:**
+```bash
+python llm-styleguide-helper.py --input-dir ./txt --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections --gemini --model gemini-2.5-flash
 ```
 
 ##### Command-Line Arguments:
-- `--input-dir`: **(Required)** Root directory to scan for `.txt` files
+- `--input-dir`: **(Required)** Root directory to scan for `.txt` and `.md` files
 - `--styleguide-dir`: **(Required)** Path to the `a-z-word-list-term-collections` directory from the Microsoft Style Guide
+- `--gemini`: **(Optional)** Enable automatic fixing with Gemini CLI and iterative Vale validation
+- `--model`: **(Optional)** Specify Gemini model to use (e.g., 'gemini-2.5-flash'). If not specified, uses Gemini CLI default
+- `--vale-ini`: **(Optional)** Path to Vale configuration file (.vale.ini). If not specified, Vale uses its default configuration
 
   After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-collections` directory will be located at:
   ```
@@ -392,7 +431,7 @@ python save_vale_prompts.py --input-dir ./txt --styleguide-dir ./microsoft-style
 
 #### How It Works:
 1. **File Discovery:**  
-   The script recursively walks through the input directory looking for `.txt`, `.md`, or `.fixed` files.
+   The script recursively walks through the input directory looking for `.txt` and `.md` files (skips `.fixed` and `.prompt` files).
 2. **Vale Analysis:**  
    For each file found, it runs Vale in JSON mode to detect style guide violations.
 3. **Alert Processing:**  
@@ -402,10 +441,21 @@ python save_vale_prompts.py --input-dir ./txt --styleguide-dir ./microsoft-style
 5. **Prompt Generation:**  
    Creates a comprehensive prompt that includes the original content, all detected alerts, and relevant vocabulary definitions.
 6. **Output:**  
-   Saves a `.prompt` file next to each original `.txt`/`.md`/`.fixed` file for use with AI models.
+   Saves a `.prompt` file next to each original file for use with AI models.
+
+**With Gemini CLI Integration (--gemini flag):**
+7. **Automatic Fixing:**  
+   Sends the prompt to Gemini CLI and receives fixed content.
+8. **Iterative Refinement:**  
+   Runs Vale again on the fixed content and repeats the process until no further improvements are detected (up to 3 consecutive iterations without improvement).
+9. **Smart Stopping:**  
+   Automatically stops when the file is clean (0 alerts) or when no improvements are detected for 3 consecutive iterations.
+10. **File Management:**  
+    Saves the best version to a `.fixed` file and cleans up temporary `.prompt` files.
 
 #### Using the Generated Prompts:
 
+**Manual LLM Interaction:**
 1. **Copy the content** from the `.prompt` file
 2. **Paste it into your favorite LLM** (ChatGPT, Claude, Gemini, etc.)
 3. **Copy the LLM's response** (the fixed Markdown content)
@@ -417,8 +467,16 @@ The generated `.prompt` file will contain:
 - Relevant vocabulary definitions (if any)
 - Instructions for the AI model on how to fix the issues
 
+**Automatic Processing (with --gemini flag):**
+The script automatically handles the entire process:
+1. **Generates prompts** for each file
+2. **Sends to Gemini CLI** for automatic fixing
+3. **Iteratively refines** until optimal results are achieved
+4. **Saves final results** to `.fixed` files
+
 #### Iterative Refinement Process:
 
+**Manual Process:**
 You can iteratively refine your content by repeating the process:
 
 1. **Run Vale again** on the LLM-fixed content to check for remaining alerts:
@@ -426,9 +484,16 @@ You can iteratively refine your content by repeating the process:
    vale your-fixed-file.txt
    ```
 
-2. **If there are still alerts**, cut and paste the latest Vale alerts from the last step into your LLM and ask it to correct the fixed text even further.  Take this LLM output and update `your-fixed-file.txt`.
+2. **If there are still alerts**, cut and paste the latest Vale alerts from the last step into your LLM and ask it to correct the fixed text even further. Take this LLM output and update `your-fixed-file.txt`.
 
 3. **Repeat the process** until you have no more Vale alerts that you care about.
+
+**Automatic Process (with --gemini flag):**
+The script automatically handles iterative refinement:
+- Runs Vale on each iteration
+- Sends remaining alerts to Gemini CLI
+- Continues until no improvements are detected for 3 consecutive iterations
+- Saves the best version automatically
 
 This iterative approach allows you to progressively improve your content's adherence to the Microsoft Style Guide, addressing any remaining issues that the LLM might have missed in previous iterations.
 
@@ -506,109 +571,127 @@ txt/SECURITY.md
 ✖ 4 errors, 13 warnings and 9 suggestions in 1 file.
 ```
 
-**Step 2: Generate AI Prompts**
+**Step 2a: Generate AI Prompts (Manual Mode)**
 ```bash
-% python save_vale_prompts.py --input-dir txt --styleguide-dir microsoft-style-guide/styleguide/a-z-word-list-term-collections
+% python llm-styleguide-helper.py --input-dir txt --styleguide-dir microsoft-style-guide/styleguide/a-z-word-list-term-collections
 ```
 
 Output:
 ```
-Processing txt/SECURITY.md
+Processing file: SECURITY.md
 Prompt written to txt/SECURITY.md.prompt
 
 All prompts generated.
 ```
 
-**Step 3: Use LLM to Fix Issues**
-Copy the generated `.prompt` file content into ChatGPT, Claude, or another LLM to get the corrected version. Save the LLM's output as `SECURITY.md.fixed`.
+You can now copy this prompt into your favorite LLM to manually apply the style guide.
 
-**Step 4: Iterative Refinement**
+**Step 2b: Automatic Processing (Gemini Mode)**
+```bash
+% python llm-styleguide-helper.py --gemini --model gemini-2.5-flash --vale-ini ./vale.ini --styleguide-dir ../summaries/microsoft-style-guide/styleguide/a-z-word-list-term-collections/ --input-dir txt
+```
+
+Output:
+```
+--- Processing file: SECURITY.md ---
+Prompt written to txt/SECURITY.md.prompt
+
+--- Processing file with Gemini: SECURITY.md ---
+
+Iteration 1 for SECURITY.md
+Current Vale alerts: 26
+Baseline alert count: 26
+Prompt written to txt/SECURITY.md.prompt
+
+--- Sending prompt to Gemini CLI ---
+--- Received response from Gemini CLI ---
+Fixed content written to txt/SECURITY.md.fixed
+
+Iteration 2 for SECURITY.md
+Current Vale alerts: 3
+✓ Improvement! New best alert count: 3
+Prompt written to txt/SECURITY.md.prompt
+
+--- Sending prompt to Gemini CLI ---
+--- Received response from Gemini CLI ---
+Fixed content written to txt/SECURITY.md.fixed
+
+Iteration 3 for SECURITY.md
+Current Vale alerts: 1
+✓ Improvement! New best alert count: 1
+Prompt written to txt/SECURITY.md.prompt
+
+--- Sending prompt to Gemini CLI ---
+--- Received response from Gemini CLI ---
+Fixed content written to txt/SECURITY.md.fixed
+
+Iteration 4 for SECURITY.md
+Current Vale alerts: 0
+✓ Improvement! New best alert count: 0
+✓ No more Vale alerts. File is clean!
+File SECURITY.md.fixed is already the best version.
+Cleaned up txt/SECURITY.md.prompt
+Completed 4 iterations for SECURITY.md. Final alert count: 0
+✓ Gemini processing completed for SECURITY.md
+
+All prompts generated.
+Gemini auto-fixing completed.
+```
+
+**Step 3: View the Results**
+The automatic process successfully reduced Vale alerts from 26 to 0 in just 4 iterations. Here's a comparison of the key changes made:
+
+```bash
+% wdiff txt/SECURITY.md txt/SECURITY.md.fixed
+```
+
+Key improvements include:
+- **Before:** "Microsoft takes the security of our software products and services seriously, which includes..."
+- **After:** "Microsoft takes the security of its software products and services, which includes..."
+
+- **Before:** "please report it to us as described below"
+- **After:** "report it as described below"
+
+- **Before:** "Please do not report security vulnerabilities"
+- **After:** "Please don't report security vulnerabilities"
+
+- **Before:** "our PGP key; please download it"
+- **After:** "the Pretty Good Privacy (PGP) key. Please download it"
+
+- **Before:** "ensure we received your original message"
+- **After:** "make sure Microsoft received your original message"
+
+- **Before:** "Additional information can be found"
+- **After:** "You can find additional information"
+
+- **Before:** "e.g."
+- **After:** "for example"
+
+- **Before:** "file(s)"
+- **After:** "files"
+
+- **Before:** "URL"
+- **After:** "address"
+
+- **Before:** "We prefer all communications to be in English"
+- **After:** "All communications should be in English"
+
+**Step 4: Manual Mode (Alternative)**
+If you prefer to manually review and edit the changes, you can copy the generated `.prompt` file content into ChatGPT, Claude, or another LLM to get the corrected version. Save the LLM's output as `SECURITY.md.fixed`.
+
+**Step 5: Manual Iterative Refinement (Alternative)**
+If using manual mode, you can continue iterating by running Vale on the fixed file:
+
 ```bash
 % vale txt/SECURITY.md.fixed
 ```
 
-Shows remaining issues:
-```
-txt/SECURITY.md.fixed
- 15:163  suggestion  'PGP' has no definition.        Microsoft.Acronyms
- 15:251  suggestion  'PGP' has no definition.        Microsoft.Acronyms
- 17:55   error       Use 'don't' instead of 'do      Microsoft.Contractions
-                     not'.
- 17:188  suggestion  'be found' looks like passive   Microsoft.Passive
-                     voice.
-✖ 1 error, 0 warnings and 3 suggestions in 1 file.
-```
+This might show remaining issues that need additional manual refinement.
 
-**Step 5: Final Iteration**
-Run the remaining Vale alerts through the LLM again to get `SECURITY.md.fixed.2`:
-
-```bash
-% vale txt/SECURITY.md.fixed.2
-✔ 0 errors, 0 warnings and 0 suggestions in 0 files.
-```
+Copy the Vale output and input it into your LLM to refine your output even further.
 
 **Result:**
-The final corrected version shows significant improvements in Microsoft Style Guide compliance:
-
-- **Before:** "Microsoft takes the security of our software products and services seriously, which includes..."
-- **After:** "Microsoft prioritizes the security of its software products and services, including..."
-
-- **Before:** "If you believe you have found a security vulnerability..."
-- **After:** "If you discover a security vulnerability..."
-
-- **Before:** "Please do not report security vulnerabilities..."
-- **After:** "Please don't report security vulnerabilities..."
-
-This example demonstrates that even Microsoft's own official documentation can benefit from AI-assisted style guide compliance using this script. The iterative process successfully transformed a document with 26 style violations into one that fully complies with the Microsoft Style Guide.
-
-The full wdiff of the original and fixed files is as follows:
-
-```
-% wdiff txt/SECURITY.md txt/SECURITY.md.fixed.2
-<!-- BEGIN MICROSOFT SECURITY.MD V0.0.9 BLOCK -->
-
-## Security
-
-Microsoft [-takes-] {+prioritizes+} the security of [-our-] {+its+} software products and [-services seriously, which includes-] {+services, including+} all source code repositories managed through [-our-] {+its+} GitHub [-organizations, which include-] {+organizations:+} [Microsoft](https://github.com/Microsoft), [Azure](https://github.com/Azure), [DotNet](https://github.com/dotnet), [-[AspNet](https://github.com/aspnet)-] {+[AspNet](https://github.com/aspnet),+} and [Xamarin](https://github.com/xamarin).
-
-If you [-believe you have found-] {+discover+} a security vulnerability in any Microsoft-owned repository that meets [-[Microsoft's-] {+Microsoft's+} definition of a security [-vulnerability](https://aka.ms/security.md/definition),-] {+vulnerability,+} please report [-it to us-] {+the issue+} as described below.
-
-## Reporting [-Security Issues-] {+security issues+}
-
-**Please [-do not-] {+don't+} report security vulnerabilities through public GitHub issues.**
-
-Instead, please report them to the Microsoft Security Response Center (MSRC) at [https://msrc.microsoft.com/create-report](https://aka.ms/security.md/msrc/create-report).
-
-If you prefer to submit without logging in, send email to [secure@microsoft.com](mailto:secure@microsoft.com). If possible, encrypt your message with [-our PGP key; please download it-] {+Microsoft's Pretty Good Privacy (PGP) key. Download the key+} from the [Microsoft Security Response Center PGP [-Key-] {+key+} page](https://aka.ms/security.md/msrc/pgp).
-
-You should receive a response within 24 hours. If [-for some reason-] you [-do not, please-] {+don't receive a response,+} follow up via email [-to ensure we received-] {+so Microsoft can confirm receipt of+} your original message. [-Additional-] {+Find additional+} information [-can be found-] at [microsoft.com/msrc](https://www.microsoft.com/msrc).
-
-Please include the requested information listed below (as much as you can provide) to help [-us-] {+Microsoft+} better understand the nature and scope of the possible issue:
-
-* Type of issue [-(e.g.-] {+(for example,+} buffer overflow, SQL injection, cross-site scripting, etc.)
-* Full paths of source [-file(s)-] {+files+} related to the manifestation of the issue
-* The location of the affected source code (tag/branch/commit or direct [-URL)-] {+address)+}
-* Any special configuration required to reproduce the issue
-* Step-by-step instructions to reproduce the issue
-* Proof-of-concept or exploit code (if possible)
-* Impact of the issue, including how an attacker might exploit the issue
-
-This information will help [-us-] {+Microsoft+} triage your [-report more quickly.-] {+report.+}
-
-If you are reporting for a bug bounty, more complete reports can contribute to a higher bounty award. [-Please visit our-] {+Visit the+} [Microsoft Bug Bounty Program](https://aka.ms/security.md/msrc/bounty) page for more details about [-our-] active programs.
-
-## Preferred [-Languages
-
-We prefer all-] {+languages
-
-All+} communications [-to-] {+should+} be in English.
-
-## Policy
-
-Microsoft follows the principle of [Coordinated Vulnerability Disclosure](https://aka.ms/security.md/cvd).
-
-<!-- END MICROSOFT SECURITY.MD BLOCK -->
-```
+The automatic Gemini CLI integration successfully transformed a document with 26 style violations into one that fully complies with the Microsoft Style Guide in just 4 iterations. This demonstrates that even Microsoft's own official documentation can benefit from AI-assisted style guide compliance using this script.
 
 ## Getting Started
 
