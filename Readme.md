@@ -328,7 +328,9 @@ Be sure to set Tika as the document content extractor in the settings screen wit
 
 ### llm-styleguide-helper.py
 
-**Summary:** AI-powered style guide fixer that uses [Vale](https://vale.sh/) linting and Microsoft Style Guide definitions. Analyzes text/markdown files recursively for style violations, generates detailed prompts for LLMs to fix issues, and supports both manual LLM interaction and automatic fixing with [Gemini CLI](https://github.com/google-gemini/gemini-cli) with iterative refinement until all desired style guide compliance is achieved.
+**Summary:** 
+
+AI-powered style guide fixer that uses [Vale](https://vale.sh/) linting and Microsoft Style Guide definitions. Analyzes text/markdown files recursively for style violations, generates detailed prompts for LLMs to fix issues, and supports both manual LLM interaction and automatic fixing with [Gemini CLI](https://github.com/google-gemini/gemini-cli) with iterative refinement until all desired style guide compliance is achieved.
 
 #### Features:
 - **Vale Integration:** Runs Vale in JSON mode on text and markdown files to detect style guide violations
@@ -341,6 +343,7 @@ Be sure to set Tika as the document content extractor in the settings screen wit
 - **Flexible Output:** Supports both manual LLM interaction and fully automated processing
 
 #### Prerequisites:
+
 - **Python 3.7+**
 - **Vale Installation:**  
   Install Vale from [https://vale.sh/](https://vale.sh/). The script requires Vale to be available in your PATH.
@@ -356,11 +359,13 @@ Be sure to set Tika as the document content extractor in the settings screen wit
   Install [Gemini CLI](https://github.com/google-gemini/gemini-cli) and set it up:
   
   **Installation Options:**
+
   - **With Node.js:** `npm install -g @google/gemini-cli`
   - **With Homebrew:** `brew install gemini-cli`
   - **With npx:** `npx https://github.com/google-gemini/gemini-cli`
   
   **Setup Required:**
+
   After installation, you **must** run Gemini CLI once to authenticate:
   ```bash
   gemini
@@ -368,12 +373,14 @@ Be sure to set Tika as the document content extractor in the settings screen wit
   This will prompt you to sign in with your Google account and grant permissions for Gemini.
   
   **Alternative Authentication:**
+
   You can also use a Gemini API key instead of Google account authentication:
   ```bash
   export GEMINI_API_KEY="YOUR_API_KEY"
   ```
 
 #### Configuration:
+
 The script uses a `.vale.ini` configuration file that should be placed in your project root. This file configures Vale to:
 - Use the Microsoft style guide
 - Treat `.md`, `.txt` and `.fixed` files as Markdown for analysis
@@ -398,6 +405,7 @@ BlockIgnores  = (?s) *(<think>.*?</think>)
 ```
 
 #### Usage:
+
 Run the script with the following command:
 
 **Basic usage (generate prompts only):**
@@ -416,6 +424,7 @@ python llm-styleguide-helper.py --input-dir ./txt --styleguide-dir ./microsoft-s
 ```
 
 ##### Command-Line Arguments:
+
 - `--input-dir`: **(Required)** Root directory to scan for `.txt` and `.md` files
 - `--styleguide-dir`: **(Required)** Path to the `a-z-word-list-term-collections` directory from the Microsoft Style Guide
 - `--gemini`: **(Optional)** Enable automatic fixing with Gemini CLI and iterative Vale validation
@@ -430,6 +439,7 @@ After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-coll
   This directory contains alphabetically organized subdirectories (a/, b/, c/, etc.) with markdown files containing vocabulary definitions. The script searches these files to find relevant definitions for vocabulary-related Vale alerts.
 
 #### How It Works:
+
 1. **File Discovery:**  
    The script recursively walks through the input directory looking for `.txt` and `.md` files (skips `.fixed` and `.prompt` files).
 2. **Vale Analysis:**  
@@ -457,19 +467,23 @@ After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-coll
 #### Using the Generated Prompts:
 
 **Manual LLM Interaction:**
+
 1. **Copy the content** from the `.prompt` file
 2. **Paste it into your favorite LLM** (ChatGPT, Claude, Gemini, etc.)
 3. **Copy the LLM's response** (the fixed Markdown content)
 4. **Save the response** as a new `.txt` or `.fixed` file
 
 The generated `.prompt` file will contain:
+
 - The original document content
 - All Vale alerts in JSON format
 - Relevant vocabulary definitions (if any)
 - Instructions for the AI model on how to fix the issues
 
 **Automatic Processing (with --gemini flag):**
+
 The script automatically handles the entire process:
+
 1. **Generates prompts** for each file
 2. **Sends to Gemini CLI** for automatic fixing
 3. **Iteratively refines** until optimal results are achieved
@@ -478,6 +492,7 @@ The script automatically handles the entire process:
 #### Iterative Refinement Process:
 
 **Manual Process:**
+
 You can iteratively refine your content by repeating the process:
 
 1. **Run Vale again** on the LLM-fixed content to check for remaining alerts:
@@ -490,7 +505,9 @@ You can iteratively refine your content by repeating the process:
 3. **Repeat the process** until you have no more Vale alerts that you care about.
 
 **Automatic Process (with --gemini flag):**
+
 The script automatically handles iterative refinement:
+
 - Runs Vale on each iteration
 - Sends remaining alerts to Gemini CLI
 - Continues until no improvements are detected for 3 consecutive iterations
@@ -501,9 +518,11 @@ This iterative approach allows you to progressively improve your content's adher
 The prompt is designed to be used with AI models to automatically fix style guide violations while preserving the original content and meaning.
 
 #### Example:
+
 Below is an example using Microsoft's own [SECURITY.md](https://github.com/microsoft/.github/blob/main/SECURITY.md) file, demonstrating how the script can fix style guide violations even in official Microsoft documentation:
 
 **Step 1: Initial Vale Analysis**
+
 ```bash
 % vale txt/SECURITY.md
 ```
@@ -573,6 +592,7 @@ txt/SECURITY.md
 ```
 
 **Step 2a: Generate AI Prompts (Manual Mode)**
+
 ```bash
 % python llm-styleguide-helper.py --input-dir txt --styleguide-dir microsoft-style-guide/styleguide/a-z-word-list-term-collections
 ```
@@ -588,6 +608,7 @@ All prompts generated.
 You can now copy this prompt into your favorite LLM to manually apply the style guide.
 
 **Step 2b: Automatic Processing (Gemini Mode)**
+
 ```bash
 % python llm-styleguide-helper.py --gemini --model gemini-2.5-flash --vale-ini ./vale.ini --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections/ --input-dir txt
 ```
@@ -640,6 +661,7 @@ Gemini auto-fixing completed.
 ```
 
 **Step 3: View the Results**
+
 The automatic process successfully reduced Vale alerts from 26 to 0 in just 4 iterations. Here's a comparison of the key changes made:
 
 ```bash
@@ -678,9 +700,11 @@ Key improvements include:
 - **After:** "All communications should be in English"
 
 **Step 4: Manual Mode (Alternative)**
+
 If you prefer to manually review and edit the changes, you can copy the generated `.prompt` file content into ChatGPT, Claude, or another LLM to get the corrected version. Save the LLM's output as `SECURITY.md.fixed`.
 
 **Step 5: Manual Iterative Refinement (Alternative)**
+
 If using manual mode, you can continue iterating by running Vale on the fixed file:
 
 ```bash
@@ -692,6 +716,7 @@ This might show remaining issues that need additional manual refinement.
 Copy the Vale output and input it into your LLM to refine your output even further.
 
 **Result:**
+
 The automatic Gemini CLI integration successfully transformed a document with 26 style violations into one that fully complies with the Microsoft Style Guide in just 4 iterations. This demonstrates that even Microsoft's own official documentation can benefit from AI-assisted style guide compliance using this script.
 
 ## Getting Started
@@ -699,21 +724,25 @@ The automatic Gemini CLI integration successfully transformed a document with 26
 ### Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/your_username/LLM-Ninja.git
    cd LLM-Ninja
    ```
 
 2. **Set up a virtual environment (optional but recommended):**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
+   
 4. Now follow the instructions for the script above you would like to run.
 
 ## Contributing
