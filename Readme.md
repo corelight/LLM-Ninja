@@ -588,7 +588,7 @@ You can now copy this prompt into your favorite LLM to manually apply the style 
 
 **Step 2b: Automatic Processing (Gemini Mode)**
 ```bash
-% python llm-styleguide-helper.py --gemini --model gemini-2.5-flash --vale-ini ./vale.ini --styleguide-dir ../summaries/microsoft-style-guide/styleguide/a-z-word-list-term-collections/ --input-dir txt
+% python llm-styleguide-helper.py --gemini --model gemini-2.5-flash --vale-ini ./vale.ini --styleguide-dir ./microsoft-style-guide/styleguide/a-z-word-list-term-collections/ --input-dir txt
 ```
 
 Output:
