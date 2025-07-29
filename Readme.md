@@ -444,6 +444,7 @@ After cloning the Microsoft Style Guide repository, the `a-z-word-list-term-coll
    Saves a `.prompt` file next to each original file for use with AI models.
 
 **With Gemini CLI Integration (--gemini flag):**
+
 7. **Automatic Fixing:**  
    Sends the prompt to Gemini CLI and receives fixed content.
 8. **Iterative Refinement:**  
